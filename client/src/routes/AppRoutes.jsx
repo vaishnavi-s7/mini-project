@@ -5,6 +5,7 @@ import ViewData from "../pages/ViewData";
 import SubjectMaster from "../pages/SubjectMaster";
 import CourseMaster from "../pages/CourseMaster";
 import LessonMaster from "../pages/LessonMaster";
+import LessonDetails from "../pages/LessonDetails";
 import MasterDashboard from "../pages/MasterDashboard";
  
 import Login from "../pages/Login";
@@ -86,6 +87,15 @@ export default function AppRoutes() {
         element={
           <ProtectedWrapper>
             <LessonMaster />
+          </ProtectedWrapper>
+        }
+      />
+
+      <Route
+        path="/lesson-details/:lessonId"
+        element={
+          <ProtectedWrapper>
+            <LessonDetails />
           </ProtectedWrapper>
         }
       />

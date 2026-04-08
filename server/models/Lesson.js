@@ -31,6 +31,20 @@ const lessonSchema = new mongoose.Schema(
       type: String,
       default: "",
     },
+    question_bank: [
+      {
+        title: {
+          type: String,
+          default: "",
+          trim: true,
+        },
+        content: {
+          type: String,
+          default: "",
+          trim: true,
+        },
+      },
+    ],
     status: {
       type: String,
       enum: ["Active", "Inactive"],

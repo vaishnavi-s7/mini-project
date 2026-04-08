@@ -7,6 +7,16 @@ import {
     updateLesson,
 } from "../services/lessonService";
 import { getCourses } from "../services/courseService";
+import { getLocalSubjectIcon } from "../utils/subjectIcons";
+
+const API_ORIGIN = "http://localhost:5000";
+
+const getCourseIconUrl = (iconPath) =>
+    iconPath
+        ? iconPath.startsWith("http") || iconPath.startsWith("blob:")
+            ? iconPath
+            : `${API_ORIGIN}${iconPath}`
+        : "";
 
 const initialForm = {
     lesson_title: "",
@@ -112,12 +122,6 @@ export default function LessonMaster() {
             nextErrors.course = "Course is required";
         }
 
-        if (!form.lesson_order) {
-            nextErrors.lesson_order = "Lesson order is required";
-        } else if (isNaN(Number(form.lesson_order)) || Number(form.lesson_order) < 1) {
-            nextErrors.lesson_order = "Lesson order must be a positive number";
-        }
-
         setErrors(nextErrors);
         return Object.keys(nextErrors).length === 0;
     };
@@ -162,26 +166,22 @@ export default function LessonMaster() {
             return;
         }
 
-        const duplicateOrderExists = lessons.some(
-            (lesson) =>
-                lesson.course?._id === form.course &&
-                Number(lesson.lesson_order) === Number(form.lesson_order)
-        );
-
-        if (duplicateOrderExists) {
-            toast.error(
-                "Lessons with the same order cannot be submitted more than once for the same course"
-            );
-            return;
-        }
-
         try {
             setIsSaving(true);
+            const nextLessonOrder =
+                lessons
+                    .filter((lesson) => lesson.course?._id === form.course)
+                    .reduce(
+                        (maxOrder, lesson) =>
+                            Math.max(maxOrder, Number(lesson.lesson_order) || 0),
+                        0
+                    ) + 1;
+
             const payload = {
                 ...form,
                 lesson_title: form.lesson_title.trim(),
                 lesson_code: form.lesson_code.trim().toUpperCase(),
-                lesson_order: Number(form.lesson_order),
+                lesson_order: nextLessonOrder,
                 description: form.description.trim(),
                 status: "Active",
             };
@@ -206,6 +206,34 @@ export default function LessonMaster() {
             setIsSaving(false);
         }
     };
+    function CourseOptionRow({ course }) {
+        const iconUrl = course?.icon_path
+            ? `http://localhost:5000${course.icon_path}`
+            : "";
+
+        return (
+            <div className="flex items-center gap-3">
+                {iconUrl ? (
+                    <img
+                        src={iconUrl}
+                        alt={course.course_name || "Course icon"}
+                        className="h-8 w-8 rounded-lg border border-slate-200 object-cover"
+                    />
+                ) : (
+                    <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-slate-100 text-xs font-semibold text-slate-500">
+                        {course.course_name?.charAt(0)?.toUpperCase() || "?"}
+                    </div>
+                )}
+                <span>
+                    {course.course_name} ({course.course_code})
+                </span>
+            </div>
+        );
+    }
+    const activeCourses = useMemo(
+        () => courses.filter((c) => c.status === "Active"),
+        [courses]
+    );
 
     const filteredLessons = useMemo(() => {
         const normalizedSearch = searchTerm.trim().toLowerCase();
@@ -236,10 +264,10 @@ export default function LessonMaster() {
         const normalizedSearch = courseSearchTerm.trim().toLowerCase();
 
         if (!normalizedSearch) {
-            return courses.slice(0, 8);
+            return activeCourses.slice(0, 8);
         }
 
-        return courses
+        return activeCourses
             .filter(
                 (course) =>
                     course.course_name.toLowerCase().startsWith(normalizedSearch) ||
@@ -312,12 +340,6 @@ export default function LessonMaster() {
             nextErrors.course = "Course is required";
         }
 
-        if (!editForm.lesson_order) {
-            nextErrors.lesson_order = "Lesson order is required";
-        } else if (isNaN(Number(editForm.lesson_order)) || Number(editForm.lesson_order) < 1) {
-            nextErrors.lesson_order = "Lesson order must be a positive number";
-        }
-
         if (!["Active", "Inactive"].includes(editForm.status)) {
             nextErrors.status = "Valid status is required";
         }
@@ -334,26 +356,28 @@ export default function LessonMaster() {
             return;
         }
 
-        const duplicateOrderExists = lessons.some(
-            (lesson) =>
-                lesson._id !== editForm.id &&
-                lesson.course?._id === editForm.course &&
-                Number(lesson.lesson_order) === Number(editForm.lesson_order)
-        );
-
-        if (duplicateOrderExists) {
-            toast.error(
-                "Lessons with the same order cannot be submitted more than once for the same course"
-            );
-            return;
-        }
-
         try {
             setIsUpdating(true);
+            const currentLesson = lessons.find((lesson) => lesson._id === editForm.id);
+            const isCourseChanged = currentLesson?.course?._id !== editForm.course;
+            const nextLessonOrder =
+                lessons
+                    .filter(
+                        (lesson) =>
+                            lesson._id !== editForm.id && lesson.course?._id === editForm.course
+                    )
+                    .reduce(
+                        (maxOrder, lesson) =>
+                            Math.max(maxOrder, Number(lesson.lesson_order) || 0),
+                        0
+                    ) + 1;
+
             const payload = {
                 lesson_title: editForm.lesson_title.trim(),
                 course: editForm.course,
-                lesson_order: Number(editForm.lesson_order),
+                lesson_order: isCourseChanged
+                    ? nextLessonOrder
+                    : Number(editForm.lesson_order) || 1,
                 description: editForm.description.trim(),
                 status: editForm.status,
             };
@@ -410,14 +434,16 @@ export default function LessonMaster() {
                             <div className="relative">
                                 <div
                                     className="w-full rounded-xl border border-slate-300 px-4 py-3 cursor-pointer flex justify-between items-center"
-                                    onClick={() => setDropdownOpen((prev) => !prev)}
+                                    onClick={() => activeCourses.length > 0 && setDropdownOpen((prev) => !prev)}
                                 >
                                     <span className={form.course ? "text-slate-900" : "text-slate-400"}>
-                                        {form.course
-                                            ? formatCourseOption(
-                                                courses.find((c) => c._id === form.course) || {}
-                                            )
-                                            : "Select course"}
+                                        {form.course ? (
+                                            <CourseOptionRow
+                                                course={courses.find((c) => c._id === form.course) || {}}
+                                            />
+                                        ) : (
+                                            "Select course"
+                                        )}
                                     </span>
                                     <span>▾</span>
                                 </div>
@@ -495,25 +521,6 @@ export default function LessonMaster() {
                             )}
                         </div>
 
-                        {/* Lesson Order */}
-                        <div>
-                            <label className="mb-2 block text-sm font-semibold text-slate-700">
-                                Lesson Order <span className="text-red-500">*</span>
-                            </label>
-                            <input
-                                type="number"
-                                name="lesson_order"
-                                value={form.lesson_order}
-                                onChange={handleChange}
-                                placeholder="e.g. 1"
-                                min="1"
-                                className="w-full rounded-xl border border-slate-300 px-4 py-3 outline-none transition focus:border-blue-500"
-                            />
-                            {errors.lesson_order && (
-                                <p className="mt-2 text-sm text-red-600">{errors.lesson_order}</p>
-                            )}
-                        </div>
-
                         {/* Description */}
                         <div>
                             <label className="mb-2 block text-sm font-semibold text-slate-700">
@@ -547,7 +554,7 @@ export default function LessonMaster() {
 
                         <button
                             type="submit"
-                            disabled={isSaving || isCoursesLoading || courses.length === 0}
+                            disabled={isSaving || isCoursesLoading || activeCourses.length === 0}
                             className="w-full rounded-xl bg-blue-600 px-4 py-3 font-semibold text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-blue-300 cursor-pointer"
                         >
                             {isSaving ? "Saving Lesson..." : "Save"}
@@ -583,7 +590,6 @@ export default function LessonMaster() {
                                     <th className="px-4 py-3">Course</th>
                                     <th className="px-4 py-3">Lesson Title</th>
                                     <th className="px-4 py-3">Lesson Code</th>
-                                    <th className="px-4 py-3">Order</th>
                                     <th className="px-4 py-3">Description</th>
                                     <th className="px-4 py-3">Status</th>
                                 </tr>
@@ -604,7 +610,6 @@ export default function LessonMaster() {
                                         </td>
                                         <td className="px-4 py-3">{lesson.lesson_title}</td>
                                         <td className="px-4 py-3">{lesson.lesson_code}</td>
-                                        <td className="px-4 py-3">{lesson.lesson_order}</td>
                                         <td className="px-4 py-3">
                                             <span
                                                 className="block max-w-[140px] truncate"
@@ -731,23 +736,6 @@ export default function LessonMaster() {
                                 />
                                 {editErrors.lesson_title && (
                                     <p className="mt-2 text-sm text-red-600">{editErrors.lesson_title}</p>
-                                )}
-                            </div>
-
-                            <div>
-                                <label className="mb-2 block text-sm font-semibold text-slate-700">
-                                    Lesson Order *
-                                </label>
-                                <input
-                                    type="number"
-                                    name="lesson_order"
-                                    value={editForm.lesson_order}
-                                    onChange={handleEditChange}
-                                    min="1"
-                                    className="w-full rounded-xl border border-slate-300 px-4 py-3 outline-none transition focus:border-blue-500"
-                                />
-                                {editErrors.lesson_order && (
-                                    <p className="mt-2 text-sm text-red-600">{editErrors.lesson_order}</p>
                                 )}
                             </div>
 
