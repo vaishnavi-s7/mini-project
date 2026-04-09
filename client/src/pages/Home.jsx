@@ -7,7 +7,6 @@ import {
   GraduationCap,
   Table2,
 } from "lucide-react";
-import { Link } from "react-router-dom";
 import { getSubjects } from "../services/subjectService";
 import { getCourses } from "../services/courseService";
 import { getLessons } from "../services/lessonService";
@@ -16,42 +15,76 @@ const masterCards = [
   {
     key: "subjects",
     title: "Subjects",
-    description: "Open the saved subject master table.",
+    description: "View the saved subjects.",
     icon: BookOpen,
     accent: "from-blue-500 to-cyan-500",
-    href: "/master-dashboard?view=subjects",
   },
   {
     key: "courses",
     title: "Courses",
-    description: "Open the saved course master table.",
+    description: "View the saved courses.",
     icon: GraduationCap,
     accent: "from-emerald-500 to-teal-500",
-    href: "/master-dashboard?view=courses",
   },
   {
     key: "lessons",
     title: "Lessons",
-    description: "Open the saved lesson master table.",
+    description: "View the saved lessons.",
     icon: BookCopy,
     accent: "from-amber-500 to-orange-500",
-    href: "/master-dashboard?view=lessons",
   },
   {
     key: "all",
     title: "All Master Data",
-    description: "See all connected master rows together.",
+    description: "View all registered master data.",
     icon: Database,
     accent: "from-violet-500 to-indigo-500",
-    href: "/master-dashboard?view=all",
   },
 ];
+
+const modalTitles = {
+  subjects: "Registered Subjects",
+  courses: "Registered Courses",
+  lessons: "Registered Lessons",
+  all: "All Registered Master Data",
+};
+
+const kindStyles = {
+  subject: "bg-blue-50 text-blue-700 ring-blue-100",
+  course: "bg-emerald-50 text-emerald-700 ring-emerald-100",
+  lesson: "bg-amber-50 text-amber-700 ring-amber-100",
+};
+
+const kindLabels = {
+  subject: "Subject",
+  course: "Course",
+  lesson: "Lesson",
+};
+
+const modalKeyToKind = {
+  subjects: "subject",
+  courses: "course",
+  lessons: "lesson",
+};
+
+const resolveItemKind = (item, activeModalKey) => {
+  if (item.kind) {
+    return item.kind;
+  }
+
+  if (item.id?.startsWith("subject-")) return "subject";
+  if (item.id?.startsWith("course-")) return "course";
+  if (item.id?.startsWith("lesson-")) return "lesson";
+
+  return modalKeyToKind[activeModalKey] || "subject";
+};
 
 export default function Home() {
   const [subjects, setSubjects] = useState([]);
   const [courses, setCourses] = useState([]);
   const [lessons, setLessons] = useState([]);
   const [isLoadingCounts, setIsLoadingCounts] = useState(false);
+  const [activeModalKey, setActiveModalKey] = useState(null);
   const token = localStorage.getItem("token");
 
   useEffect(() => {
@@ -98,6 +131,66 @@ export default function Home() {
     [courses.length, lessons.length, subjects.length]
   );
 
+  const modalItems = useMemo(() => {
+    if (activeModalKey === "subjects") {
+      return subjects.map((subject) => ({
+        id: subject._id,
+        title: subject.subject_name,
+        subtitle: subject.subject_code,
+        description: subject.description || "No description",
+        status: subject.status,
+      }));
+    }
+
+    if (activeModalKey === "courses") {
+      return courses.map((course) => ({
+        id: course._id,
+        title: course.course_name,
+        subtitle: `${course.course_code} • ${course.subject?.subject_name || "No subject"}`,
+        description: course.description || "No description",
+        status: course.status,
+      }));
+    }
+
+    if (activeModalKey === "lessons") {
+      return lessons.map((lesson) => ({
+        id: lesson._id,
+        title: lesson.lesson_title,
+        subtitle: `${lesson.lesson_code} • ${lesson.course?.course_name || "No course"}`,
+        description: lesson.description || "No description",
+        status: lesson.status,
+      }));
+    }
+
+    if (activeModalKey === "all") {
+      return [
+        ...subjects.map((subject) => ({
+          id: `subject-${subject._id}`,
+          title: subject.subject_name,
+          subtitle: `Subject • ${subject.subject_code}`,
+          description: subject.description || "No description",
+          status: subject.status,
+        })),
+        ...courses.map((course) => ({
+          id: `course-${course._id}`,
+          title: course.course_name,
+          subtitle: `Course • ${course.course_code}`,
+          description: course.description || "No description",
+          status: course.status,
+        })),
+        ...lessons.map((lesson) => ({
+          id: `lesson-${lesson._id}`,
+          title: lesson.lesson_title,
+          subtitle: `Lesson • ${lesson.lesson_code}`,
+          description: lesson.description || "No description",
+          status: lesson.status,
+        })),
+      ];
+    }
+
+    return [];
+  }, [activeModalKey, courses, lessons, subjects]);
+
   return (
     <div className="mx-auto max-w-6xl px-6">
       <div className="mb-14 text-center">
@@ -134,8 +227,14 @@ export default function Home() {
         <div className="mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
           {masterCards.map((card) => {
             const Icon = card.icon;
-            const content = (
-              <>
+            return (
+              <button
+                key={card.key}
+                type="button"
+                onClick={() => token && setActiveModalKey(card.key)}
+                disabled={!token}
+                className="rounded-3xl border border-white/10 bg-white/10 p-5 text-left backdrop-blur-sm transition hover:-translate-y-1 hover:border-white/30 hover:bg-white/15 disabled:cursor-not-allowed disabled:opacity-75"
+              >
                 <div className="flex items-start justify-between gap-3">
                   <div>
                     <p className="text-sm text-white/80">{card.title}</p>
@@ -150,30 +249,7 @@ export default function Home() {
                   </div>
                 </div>
                 <p className="mt-4 text-sm text-white/75">{card.description}</p>
-              </>
-            );
-
-            if (!token || card.disabled) {
-              return (
-                <div
-                  key={card.key}
-                  className={`rounded-3xl border border-white/10 bg-white/10 p-5 backdrop-blur-sm ${
-                    card.disabled ? "opacity-75" : ""
-                  }`}
-                >
-                  {content}
-                </div>
-              );
-            }
-
-            return (
-              <Link
-                key={card.key}
-                to={card.href}
-                className="rounded-3xl border border-white/10 bg-white/10 p-5 backdrop-blur-sm transition hover:-translate-y-1 hover:border-white/30 hover:bg-white/15"
-              >
-                {content}
-              </Link>
+              </button>
             );
           })}
         </div>
@@ -216,6 +292,81 @@ export default function Home() {
           </p>
         </div>
       </div>
+
+      {activeModalKey && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/55 px-4"
+          onClick={() => setActiveModalKey(null)}
+        >
+          <div
+            className="w-full max-w-4xl rounded-[2rem] bg-white p-6 shadow-2xl"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <h3 className="text-2xl font-bold text-slate-900">
+                  {modalTitles[activeModalKey]}
+                </h3>
+                <p className="mt-1 text-sm text-slate-500">
+                  {modalItems.length} item{modalItems.length === 1 ? "" : "s"} saved
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setActiveModalKey(null)}
+                className="rounded-full border border-slate-200 px-3 py-1.5 text-sm font-semibold text-slate-600 transition hover:bg-slate-50"
+              >
+                Close
+              </button>
+            </div>
+
+            <div className="mt-6 max-h-[65vh] overflow-y-auto pr-1">
+              {modalItems.length === 0 ? (
+                <div className="rounded-2xl border border-dashed border-slate-200 px-6 py-12 text-center text-slate-500">
+                  No records found.
+                </div>
+              ) : (
+                <div className="grid gap-4 md:grid-cols-2">
+                  {modalItems.map((item) => (
+                    (() => {
+                      const itemKind = resolveItemKind(item, activeModalKey);
+
+                      return (
+                        <div
+                          key={item.id}
+                          className="rounded-2xl border border-slate-200 bg-slate-50 p-4 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md"
+                        >
+                          <div className="flex items-start justify-between gap-3">
+                            <div>
+                              <span
+                                className={`inline-flex rounded-full px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.18em] ring-1 ${kindStyles[itemKind]}`}
+                              >
+                                {kindLabels[itemKind]}
+                              </span>
+                              <h4 className="mt-2 text-base font-semibold text-slate-900">
+                                {item.title}
+                              </h4>
+                              <p className="mt-1 text-xs font-medium uppercase tracking-wider text-slate-400">
+                                {item.subtitle}
+                              </p>
+                            </div>
+                            <span className="rounded-full bg-white px-2.5 py-1 text-xs font-semibold text-slate-600 ring-1 ring-slate-200">
+                              {item.status || "Inactive"}
+                            </span>
+                          </div>
+                          <p className="mt-3 text-sm leading-6 text-slate-600">
+                            {item.description}
+                          </p>
+                        </div>
+                      );
+                    })()
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
 
     </div>
   );

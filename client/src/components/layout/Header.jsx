@@ -11,7 +11,7 @@ export default function Header() {
           className="text-sm sm:text-lg md:text-xl lg:text-2xl font-bold cursor-pointer truncate"
           onClick={() => navigate("/")}
         >
-          Student Management System
+          AcadX
         </h1>
 
       </div>

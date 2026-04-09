@@ -15,7 +15,7 @@ import {
 } from "lucide-react";
 import React, { useEffect, useMemo, useState } from "react";
 import toast from "react-hot-toast";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import { getCourses } from "../services/courseService";
 import { getLessons } from "../services/lessonService";
 import { getSubjects } from "../services/subjectService";
@@ -94,6 +94,7 @@ const TABLE_LESSON_ROW_HEIGHT = 44;
  
 export default function MasterDashboardContent() {
   const navigate = useNavigate();
+  const location = useLocation();
  
   const [subjects, setSubjects] = useState([]);
   const [courses, setCourses] = useState([]);
@@ -123,8 +124,15 @@ export default function MasterDashboardContent() {
         setSubjects(nextSubjects);
         setCourses(nextCourses);
         setLessons(nextLessons);
+        const restoreDashboard = location.state?.restoreDashboard;
  
-        if (nextSubjects[0]?._id) {
+        if (restoreDashboard) {
+          setViewMode(restoreDashboard.viewMode || "hierarchy");
+          setSearchQuery(restoreDashboard.searchQuery || "");
+          setSelectedSubjectId(restoreDashboard.selectedSubjectId || "");
+          setSelectedCourseId(restoreDashboard.selectedCourseId || "");
+          setExpandedCourseIds(restoreDashboard.expandedCourseIds || {});
+        } else if (nextSubjects[0]?._id) {
           setSelectedSubjectId(nextSubjects[0]._id);
           const firstCourse = nextCourses.find((course) => course.subject?._id === nextSubjects[0]._id);
           setSelectedCourseId(firstCourse?._id || "");
@@ -140,7 +148,7 @@ export default function MasterDashboardContent() {
     };
  
     load();
-  }, []);
+  }, [location.state]);
  
   const filteredSubjects = useMemo(() => {
     const query = normalize(searchQuery.trim());
@@ -323,6 +331,24 @@ export default function MasterDashboardContent() {
     return visibleLessonCount * TABLE_LESSON_ROW_HEIGHT;
   };
  
+  const openLessonDetails = (lessonId) => {
+    navigate(`/lesson-details/${lessonId}`, {
+      state: {
+        from: {
+          pathname: location.pathname,
+          search: location.search,
+        },
+        dashboardState: {
+          viewMode,
+          searchQuery,
+          selectedSubjectId,
+          selectedCourseId,
+          expandedCourseIds,
+        },
+      },
+    });
+  };
+ 
   return (
     <div className="min-h-screen font-sans">
       <header className="sticky top-0 z-30 flex h-16 items-center justify-between border-b bg-white px-6">
@@ -468,7 +494,7 @@ export default function MasterDashboardContent() {
                         <div className="flex items-center justify-between border-t pt-4">
                           <button
                             className="flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider text-blue-600 hover:text-blue-700"
-                            onClick={() => navigate(`/lesson-details/${lesson._id}`)}
+                            onClick={() => openLessonDetails(lesson._id)}
                           >
                             View Details <ChevronRight className="h-3 w-3" />
                           </button>
@@ -605,7 +631,7 @@ export default function MasterDashboardContent() {
                                         <button
                                           key={lesson._id}
                                           type="button"
-                                          onClick={() => navigate(`/lesson-details/${lesson._id}`)}
+                                          onClick={() => openLessonDetails(lesson._id)}
                                           className="flex h-[44px] w-6 items-start justify-center rounded-md border border-transparent pt-0.5 text-slate-500 transition hover:border-blue-200 hover:bg-blue-50 hover:text-blue-600"
                                           title={`Open ${lesson.lesson_title}`}
                                           aria-label={`Open ${lesson.lesson_title}`}
@@ -638,6 +664,8 @@ export default function MasterDashboardContent() {
     </div>
   );
 }
+ 
+ 
  
  
  

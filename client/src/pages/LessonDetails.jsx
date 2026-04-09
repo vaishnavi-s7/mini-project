@@ -1,21 +1,21 @@
 import { Plus, Save, Trash2 } from "lucide-react";
 import { useEffect, useState } from "react";
 import toast from "react-hot-toast";
-import { useParams, useNavigate } from "react-router-dom";
+import { useLocation, useNavigate, useParams } from "react-router-dom";
 import {
   getLessonById,
   updateLessonQuestionBank,
 } from "../services/lessonService";
-
+ 
 const createQuestionBankItem = (index = 0) => ({
   local_id: `new-${Date.now()}-${index}`,
   title: "",
   content: "",
 });
-
+ 
 const createInitialQuestionBanks = () =>
   [createQuestionBankItem(0)];
-
+ 
 export default function LessonDetails() {
   const { lessonId } = useParams();
   const [lesson, setLesson] = useState(null);
@@ -23,16 +23,17 @@ export default function LessonDetails() {
   const [editingIndex, setEditingIndex] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
-
+ 
   const navigate = useNavigate();
-
+  const location = useLocation();
+ 
   useEffect(() => {
     const loadLesson = async () => {
       try {
         setIsLoading(true);
         const res = await getLessonById(lessonId);
         const lessonData = res.data?.data || null;
-
+ 
         setLesson(lessonData);
         setQuestionBank(
           Array.isArray(lessonData?.question_bank)
@@ -51,10 +52,10 @@ export default function LessonDetails() {
         setIsLoading(false);
       }
     };
-
+ 
     loadLesson();
   }, [lessonId]);
-
+ 
   const handleQuestionBankChange = (index, field, value) => {
     setQuestionBank((prev) =>
       prev.map((item, itemIndex) =>
@@ -62,26 +63,26 @@ export default function LessonDetails() {
       )
     );
   };
-
+ 
   const handleAddQuestionBank = () => {
     const hasIncompleteBlock = questionBank.some(
       (item) => !item.title.trim() || !item.content.trim()
     );
-
+ 
     if (hasIncompleteBlock) {
       toast.error("Fill the current question box before adding a new one.");
       return;
     }
-
+ 
     const nextIndex = questionBank.length;
     setQuestionBank((prev) => [...prev, createQuestionBankItem(nextIndex)]);
     setEditingIndex(nextIndex);
   };
-
+ 
   const canAddQuestionBank = questionBank.every(
     (item) => item.title.trim() && item.content.trim()
   );
-
+ 
   const handleDeleteQuestionBank = (indexToDelete) => {
     setQuestionBank((prev) => prev.filter((_, index) => index !== indexToDelete));
     setEditingIndex((prev) => {
@@ -90,38 +91,38 @@ export default function LessonDetails() {
       return prev > indexToDelete ? prev - 1 : prev;
     });
   };
-
+ 
   const handleSave = async () => {
     try {
       if (questionBank.length === 0) {
         toast.error("Add at least one question block before saving.");
         return;
       }
-
+ 
       const normalizedQuestionBank = questionBank.map((item) => ({
         title: item.title.trim(),
         content: item.content.trim(),
       }));
-
+ 
       const firstInvalidBlockIndex = normalizedQuestionBank.findIndex(
         (item) => !item.title || !item.content
       );
-
+ 
       if (firstInvalidBlockIndex !== -1) {
         toast.error(
           `Question block ${firstInvalidBlockIndex + 1} is incomplete. Fill title and content.`
         );
         return;
       }
-
+ 
       setIsSaving(true);
       const payload = {
         question_bank: normalizedQuestionBank,
       };
-
+ 
       const res = await updateLessonQuestionBank(lessonId, payload);
       const updatedLesson = res.data?.data;
-
+ 
       setLesson(updatedLesson);
       setQuestionBank(
         Array.isArray(updatedLesson?.question_bank)
@@ -140,7 +141,21 @@ export default function LessonDetails() {
       setIsSaving(false);
     }
   };
-
+ 
+  const handleBack = () => {
+    const from = location.state?.from;
+    const dashboardState = location.state?.dashboardState;
+ 
+    if (from?.pathname) {
+      navigate(`${from.pathname}${from.search || ""}`, {
+        state: dashboardState ? { restoreDashboard: dashboardState } : undefined,
+      });
+      return;
+    }
+ 
+    navigate(-1);
+  };
+ 
   return (
     <div className="space-y-6">
       <section className="rounded-3xl bg-white p-6 shadow-lg sm:p-8">
@@ -148,7 +163,7 @@ export default function LessonDetails() {
           <div>
             <button
               type="button"
-              onClick={() => navigate(-1)}
+              onClick={handleBack}
               className="text-sm font-semibold text-blue-600 transition hover:text-blue-700"
             >
               Back
@@ -161,7 +176,7 @@ export default function LessonDetails() {
               {lesson?.course?.course_name || "-"} / {lesson?.lesson_code || "-"}
             </p>
           </div>
-
+ 
           <div className="flex gap-3">
             <button
               type="button"
@@ -184,7 +199,7 @@ export default function LessonDetails() {
           </div>
         </div>
       </section>
-
+ 
       <section className="rounded-3xl bg-white p-6 shadow-lg sm:p-8">
         {isLoading ? (
           <p className="rounded-2xl bg-slate-50 px-4 py-6 text-center text-slate-500">
@@ -199,7 +214,7 @@ export default function LessonDetails() {
             <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
               {questionBank.map((item, index) => {
                 const isEditing = editingIndex === index;
-
+ 
                 return (
                   <div
                     key={item.local_id}
@@ -216,7 +231,7 @@ export default function LessonDetails() {
                         <Trash2 size={16} />
                       </button>
                     </div>
-
+ 
                     {isEditing ? (
                       <div className="space-y-4">
                         <input
@@ -269,3 +284,5 @@ export default function LessonDetails() {
     </div>
   );
 }
+ 
+ 
