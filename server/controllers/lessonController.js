@@ -1,5 +1,6 @@
 import Lesson from "../models/Lesson.js";
 import Course from "../models/Course.js";
+import { resequenceDocuments } from "../utils/resequenceDocuments.js";
 
 const buildLessonId = (sequenceNumber) =>
   `LES${String(sequenceNumber).padStart(3, "0")}`;
@@ -28,8 +29,8 @@ export const createLesson = async (req, res) => {
       return res.status(404).json({ message: "Selected course not found" });
     }
 
-    const lastLesson = await Lesson.findOne().sort({ sequence_number: -1 });
-    const nextSequence = (lastLesson?.sequence_number || 0) + 1;
+    const lessons = await resequenceDocuments(Lesson, buildLessonId, "lesson_id");
+    const nextSequence = lessons.length + 1;
 
     const lessonData = {
       lesson_title: lesson_title.trim(),
@@ -69,6 +70,8 @@ export const createLesson = async (req, res) => {
 
 export const getLessons = async (_req, res) => {
   try {
+    await resequenceDocuments(Lesson, buildLessonId, "lesson_id");
+
     const lessons = await Lesson.find()
       .populate({
         path: "course",
@@ -204,5 +207,28 @@ export const updateLessonQuestionBank = async (req, res) => {
     });
   } catch (error) {
     res.status(400).json({ message: error.message });
+  }
+};
+
+export const deleteLesson = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const lesson = await Lesson.findById(id);
+
+    if (!lesson) {
+      return res.status(404).json({ message: "Lesson not found" });
+    }
+
+    await Lesson.findByIdAndDelete(id);
+    await resequenceDocuments(Lesson, buildLessonId, "lesson_id");
+
+    res.json({
+      message: "Lesson deleted successfully",
+    });
+  } catch (error) {
+    console.log("DELETE LESSON ERROR:", error);
+    res.status(500).json({
+      message: "Failed to delete lesson",
+    });
   }
 };

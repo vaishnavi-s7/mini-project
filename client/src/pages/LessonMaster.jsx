@@ -1,28 +1,36 @@
 import { useEffect, useMemo, useState } from "react";
-import { ChevronLeft, ChevronRight, Pencil } from "lucide-react";
+
+import { ChevronLeft, ChevronRight, Pencil, Plus, Trash2, X } from "lucide-react";
+
 import toast from "react-hot-toast";
+
 import {
     createLesson,
+    deleteLesson,
     getLessons,
+    updateLessonQuestionBank,
     updateLesson,
 } from "../services/lessonService";
 import { getCourses } from "../services/courseService";
 import { getLocalSubjectIcon } from "../utils/subjectIcons";
+import ConfirmModal from "../components/common/ConfirmModal";
 
 const API_ORIGIN = "http://localhost:5000";
 
-const getCourseIconUrl = (iconPath) =>
+const getSubjectIconUrl = (iconPath) =>
     iconPath
         ? iconPath.startsWith("http") || iconPath.startsWith("blob:")
             ? iconPath
             : `${API_ORIGIN}${iconPath}`
         : "";
 
+const getCourseSubjectIcon = (course) =>
+    getLocalSubjectIcon(course?.subject) || getSubjectIconUrl(course?.subject?.icon_path);
+
 const initialForm = {
     lesson_title: "",
     lesson_code: "",
     course: "",
-    lesson_order: "",
     description: "",
 };
 
@@ -30,12 +38,13 @@ const initialEditForm = {
     id: "",
     lesson_title: "",
     course: "",
-    lesson_order: "",
     description: "",
     status: "Active",
 };
 
 const PAGE_SIZE = 5;
+
+const EMPTY_BANK = () => ({ title: "", content: "" });
 
 export default function LessonMaster() {
     const [form, setForm] = useState(initialForm);
@@ -43,8 +52,8 @@ export default function LessonMaster() {
     const [courses, setCourses] = useState([]);
     const [courseSearchTerm, setCourseSearchTerm] = useState("");
     const [lessons, setLessons] = useState([]);
-    const [searchTerm, setSearchTerm] = useState("");
-    const [selectedCourse, setSelectedCourse] = useState("");
+    const [searchTerm] = useState("");
+    const [selectedCourse] = useState("");
     const [isSaving, setIsSaving] = useState(false);
     const [isLoading, setIsLoading] = useState(true);
     const [isCoursesLoading, setIsCoursesLoading] = useState(true);
@@ -54,6 +63,16 @@ export default function LessonMaster() {
     const [isUpdating, setIsUpdating] = useState(false);
     const [currentPage, setCurrentPage] = useState(1);
     const [dropdownOpen, setDropdownOpen] = useState(false);
+    const [editDropdownOpen, setEditDropdownOpen] = useState(false);
+    const [editCourseSearchTerm, setEditCourseSearchTerm] = useState("");
+    const [deletingId, setDeletingId] = useState("");
+    const [deleteTarget, setDeleteTarget] = useState(null);
+
+    // ── Question Bank state ──────────────────────────────────────────────────
+    const [questionModalLesson, setQuestionModalLesson] = useState(null);
+    const [questionBanks, setQuestionBanks] = useState([EMPTY_BANK()]);
+    const [savedBankCountMap, setSavedBankCountMap] = useState({}); // { lessonId: number }
+    // ────────────────────────────────────────────────────────────────────────
 
     const loadCourses = async () => {
         try {
@@ -72,9 +91,7 @@ export default function LessonMaster() {
         try {
             setIsLoading(true);
             const res = await getLessons();
-
             setLessons(Array.isArray(res.data?.data) ? res.data.data : []);
-
         } catch (error) {
             toast.error(error.response?.data?.message || "Failed to load lessons");
             setLessons([]);
@@ -88,56 +105,38 @@ export default function LessonMaster() {
         loadLessons();
     }, []);
 
-    const formatCourseOption = (course) =>
-        `${course.course_name} (${course.course_code})`;
+    useEffect(() => {
+        const nextCountMap = lessons.reduce((acc, lesson) => {
+            acc[lesson._id] = Array.isArray(lesson?.question_bank) ? lesson.question_bank.length : 0;
+            return acc;
+        }, {});
+        setSavedBankCountMap(nextCountMap);
+    }, [lessons]);
 
     const getDescriptionPreview = (description) => {
         const normalizedDescription = description?.trim() || "";
-
-        if (!normalizedDescription) {
-            return "-";
-        }
-
+        if (!normalizedDescription) return "-";
         const words = normalizedDescription.split(/\s+/);
-
-        if (words.length <= 2) {
-            return normalizedDescription;
-        }
-
+        if (words.length <= 2) return normalizedDescription;
         return `${words.slice(0, 2).join(" ")}...`;
     };
 
     const validateForm = () => {
         const nextErrors = {};
-
-        if (!form.lesson_title.trim()) {
-            nextErrors.lesson_title = "Lesson title is required";
-        }
-
-        if (!form.lesson_code.trim()) {
-            nextErrors.lesson_code = "Lesson code is required";
-        }
-
-        if (!form.course) {
-            nextErrors.course = "Course is required";
-        }
-
+        if (!form.lesson_title.trim()) nextErrors.lesson_title = "Lesson title is required";
+        if (!form.lesson_code.trim()) nextErrors.lesson_code = "Lesson code is required";
+        if (!form.course) nextErrors.course = "Course is required";
         setErrors(nextErrors);
         return Object.keys(nextErrors).length === 0;
     };
 
     const handleChange = (e) => {
         const { name, value } = e.target;
-
         setForm((prev) => ({
             ...prev,
             [name]: name === "lesson_code" ? value.toUpperCase() : value,
         }));
-
-        setErrors((prev) => ({
-            ...prev,
-            [name]: "",
-        }));
+        setErrors((prev) => ({ ...prev, [name]: "" }));
     };
 
     const handleCourseSearchChange = (e) => {
@@ -146,21 +145,12 @@ export default function LessonMaster() {
 
     const handleCourseSelectChange = (e) => {
         const { value } = e.target;
-
-        setForm((prev) => ({
-            ...prev,
-            course: value,
-        }));
-
-        setErrors((prev) => ({
-            ...prev,
-            course: "",
-        }));
+        setForm((prev) => ({ ...prev, course: value }));
+        setErrors((prev) => ({ ...prev, course: "" }));
     };
 
     const handleSubmit = async (e) => {
         e.preventDefault();
-
         if (!validateForm()) {
             toast.error("Please fill all required fields");
             return;
@@ -172,8 +162,7 @@ export default function LessonMaster() {
                 lessons
                     .filter((lesson) => lesson.course?._id === form.course)
                     .reduce(
-                        (maxOrder, lesson) =>
-                            Math.max(maxOrder, Number(lesson.lesson_order) || 0),
+                        (maxOrder, lesson) => Math.max(maxOrder, Number(lesson.lesson_order) || 0),
                         0
                     ) + 1;
 
@@ -206,22 +195,25 @@ export default function LessonMaster() {
             setIsSaving(false);
         }
     };
+
     function CourseOptionRow({ course }) {
-        const iconUrl = course?.icon_path
-            ? `http://localhost:5000${course.icon_path}`
-            : "";
+        const iconUrl = getCourseSubjectIcon(course);
+        const fallbackLabel =
+            course?.subject?.subject_name?.charAt(0)?.toUpperCase() ||
+            course.course_name?.charAt(0)?.toUpperCase() ||
+            "?";
 
         return (
             <div className="flex items-center gap-3">
                 {iconUrl ? (
                     <img
                         src={iconUrl}
-                        alt={course.course_name || "Course icon"}
+                        alt={course.subject?.subject_name || course.course_name || "Course icon"}
                         className="h-8 w-8 rounded-lg border border-slate-200 object-cover"
                     />
                 ) : (
                     <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-slate-100 text-xs font-semibold text-slate-500">
-                        {course.course_name?.charAt(0)?.toUpperCase() || "?"}
+                        {fallbackLabel}
                     </div>
                 )}
                 <span>
@@ -230,6 +222,7 @@ export default function LessonMaster() {
             </div>
         );
     }
+
     const activeCourses = useMemo(
         () => courses.filter((c) => c.status === "Active"),
         [courses]
@@ -237,12 +230,8 @@ export default function LessonMaster() {
 
     const filteredLessons = useMemo(() => {
         const normalizedSearch = searchTerm.trim().toLowerCase();
-
         return lessons.filter((lesson) => {
-            const matchesCourse = selectedCourse
-                ? lesson.course?._id === selectedCourse
-                : true;
-
+            const matchesCourse = selectedCourse ? lesson.course?._id === selectedCourse : true;
             const matchesSearch = normalizedSearch
                 ? [
                     lesson.lesson_id,
@@ -255,18 +244,13 @@ export default function LessonMaster() {
                     .filter(Boolean)
                     .some((value) => value.toLowerCase().includes(normalizedSearch))
                 : true;
-
             return matchesCourse && matchesSearch;
         });
     }, [lessons, searchTerm, selectedCourse]);
 
     const courseSuggestions = useMemo(() => {
         const normalizedSearch = courseSearchTerm.trim().toLowerCase();
-
-        if (!normalizedSearch) {
-            return activeCourses.slice(0, 8);
-        }
-
+        if (!normalizedSearch) return activeCourses.slice(0, 8);
         return activeCourses
             .filter(
                 (course) =>
@@ -276,10 +260,23 @@ export default function LessonMaster() {
             .slice(0, 8);
     }, [courseSearchTerm, courses]);
 
-    const activeCount = useMemo(
-        () => filteredLessons.filter((lesson) => lesson.status === "Active").length,
-        [filteredLessons]
-    );
+    const editableCourses = useMemo(() => {
+        const currentCourse = courses.find((course) => course._id === editForm.course);
+        if (!currentCourse || currentCourse.status === "Active") return activeCourses;
+        return [currentCourse, ...activeCourses];
+    }, [activeCourses, courses, editForm.course]);
+
+    const editCourseSuggestions = useMemo(() => {
+        const normalizedSearch = editCourseSearchTerm.trim().toLowerCase();
+        if (!normalizedSearch) return editableCourses.slice(0, 8);
+        return editableCourses
+            .filter(
+                (course) =>
+                    course.course_name.toLowerCase().startsWith(normalizedSearch) ||
+                    course.course_code.toLowerCase().startsWith(normalizedSearch)
+            )
+            .slice(0, 8);
+    }, [editCourseSearchTerm, editableCourses]);
 
     const totalPages = Math.max(1, Math.ceil(filteredLessons.length / PAGE_SIZE));
 
@@ -288,23 +285,19 @@ export default function LessonMaster() {
         return filteredLessons.slice(startIndex, startIndex + PAGE_SIZE);
     }, [currentPage, filteredLessons]);
 
-    useEffect(() => {
-        setCurrentPage(1);
-    }, [searchTerm, selectedCourse]);
-
-    useEffect(() => {
-        setCurrentPage((prev) => Math.min(prev, totalPages));
-    }, [totalPages]);
+    useEffect(() => { setCurrentPage(1); }, [searchTerm, selectedCourse]);
+    useEffect(() => { setCurrentPage((prev) => Math.min(prev, totalPages)); }, [totalPages]);
 
     const openEditModal = (lesson) => {
         setEditForm({
             id: lesson._id,
             lesson_title: lesson.lesson_title,
             course: lesson.course?._id || "",
-            lesson_order: lesson.lesson_order,
             description: lesson.description,
             status: lesson.status,
         });
+        setEditCourseSearchTerm("");
+        setEditDropdownOpen(false);
         setEditErrors({});
         setIsEditOpen(true);
     };
@@ -312,45 +305,28 @@ export default function LessonMaster() {
     const closeEditModal = () => {
         setIsEditOpen(false);
         setEditForm(initialEditForm);
+        setEditCourseSearchTerm("");
+        setEditDropdownOpen(false);
         setEditErrors({});
     };
 
     const handleEditChange = (e) => {
         const { name, value } = e.target;
-
-        setEditForm((prev) => ({
-            ...prev,
-            [name]: value,
-        }));
-
-        setEditErrors((prev) => ({
-            ...prev,
-            [name]: "",
-        }));
+        setEditForm((prev) => ({ ...prev, [name]: value }));
+        setEditErrors((prev) => ({ ...prev, [name]: "" }));
     };
 
     const validateEditForm = () => {
         const nextErrors = {};
-
-        if (!editForm.lesson_title.trim()) {
-            nextErrors.lesson_title = "Lesson title is required";
-        }
-
-        if (!editForm.course) {
-            nextErrors.course = "Course is required";
-        }
-
-        if (!["Active", "Inactive"].includes(editForm.status)) {
-            nextErrors.status = "Valid status is required";
-        }
-
+        if (!editForm.lesson_title.trim()) nextErrors.lesson_title = "Lesson title is required";
+        if (!editForm.course) nextErrors.course = "Course is required";
+        if (!["Active", "Inactive"].includes(editForm.status)) nextErrors.status = "Valid status is required";
         setEditErrors(nextErrors);
         return Object.keys(nextErrors).length === 0;
     };
 
     const handleEditSubmit = async (e) => {
         e.preventDefault();
-
         if (!validateEditForm()) {
             toast.error("Please complete all required edit fields");
             return;
@@ -363,12 +339,10 @@ export default function LessonMaster() {
             const nextLessonOrder =
                 lessons
                     .filter(
-                        (lesson) =>
-                            lesson._id !== editForm.id && lesson.course?._id === editForm.course
+                        (lesson) => lesson._id !== editForm.id && lesson.course?._id === editForm.course
                     )
                     .reduce(
-                        (maxOrder, lesson) =>
-                            Math.max(maxOrder, Number(lesson.lesson_order) || 0),
+                        (maxOrder, lesson) => Math.max(maxOrder, Number(lesson.lesson_order) || 0),
                         0
                     ) + 1;
 
@@ -377,7 +351,7 @@ export default function LessonMaster() {
                 course: editForm.course,
                 lesson_order: isCourseChanged
                     ? nextLessonOrder
-                    : Number(editForm.lesson_order) || 1,
+                    : Number(currentLesson?.lesson_order) || 1,
                 description: editForm.description.trim(),
                 status: editForm.status,
             };
@@ -398,27 +372,115 @@ export default function LessonMaster() {
         }
     };
 
+    const handleDeleteLesson = async (lesson) => {
+        if (!lesson) {
+            return;
+        }
+
+        try {
+            setDeletingId(lesson._id);
+            const res = await deleteLesson(lesson._id);
+            toast.success(res.data?.message || "Lesson deleted successfully");
+            await loadLessons();
+            setDeleteTarget(null);
+        } catch (error) {
+            toast.error(error.response?.data?.message || "Failed to delete lesson");
+        } finally {
+            setDeletingId("");
+        }
+    };
+
+    // ── Question Bank handlers ───────────────────────────────────────────────
+    const openQuestionModal = (lesson) => {
+        setQuestionModalLesson(lesson);
+        const existingBanks = Array.isArray(lesson?.question_bank) ? lesson.question_bank : [];
+        setQuestionBanks(
+            existingBanks.length > 0
+                ? existingBanks.map((bank) => ({
+                    title: bank?.title || "",
+                    content: bank?.content || "",
+                }))
+                : [EMPTY_BANK()]
+        );
+    };
+
+    const closeQuestionModal = () => {
+        setQuestionModalLesson(null);
+        setQuestionBanks([EMPTY_BANK()]);
+    };
+
+    const handleAddBank = () => {
+        const hasIncompleteBank = questionBanks.some(
+            (bank) => !bank.title.trim() || !bank.content.trim()
+        );
+
+        if (hasIncompleteBank) {
+            toast.error("Fill the current question box before adding a new one.");
+            return;
+        }
+
+        setQuestionBanks((prev) => [...prev, EMPTY_BANK()]);
+    };
+
+    const canAddBank = questionBanks.every(
+        (bank) => bank.title.trim() && bank.content.trim()
+    );
+
+    const handleBankFieldChange = (index, field, value) => {
+        setQuestionBanks((prev) =>
+            prev.map((b, i) => (i === index ? { ...b, [field]: value } : b))
+        );
+    };
+
+    const handleRemoveBank = (index) => {
+        setQuestionBanks((prev) => {
+            const updated = prev.filter((_, i) => i !== index);
+            return updated.length ? updated : [EMPTY_BANK()];
+        });
+    };
+
+    const handleUpload = async () => {
+        const filled = questionBanks.filter((b) => b.title.trim() || b.content.trim());
+
+        if (!filled.length) {
+            toast.error("Please fill in at least one question bank");
+            return;
+        }
+
+        try {
+            const payload = {
+                question_bank: filled.map((b) => ({
+                    title: b.title.trim(),
+                    content: b.content.trim(),
+                })),
+            };
+
+            const res = await updateLessonQuestionBank(questionModalLesson._id, payload);
+            const updatedLesson = res.data?.data;
+
+            if (updatedLesson?._id) {
+                setLessons((prev) =>
+                    prev.map((lesson) => (lesson._id === updatedLesson._id ? updatedLesson : lesson))
+                );
+
+                setSavedBankCountMap((prev) => ({
+                    ...prev,
+                    [updatedLesson._id]: Array.isArray(updatedLesson.question_bank)
+                        ? updatedLesson.question_bank.length
+                        : 0,
+                }));
+            }
+
+            toast.success(res.data?.message || "Question banks uploaded successfully");
+            closeQuestionModal();
+        } catch (error) {
+            toast.error(error.response?.data?.message || "Failed to upload question bank");
+        }
+    };
+    // ────────────────────────────────────────────────────────────────────────
+
     return (
         <div className="space-y-8">
-            {/* <section className="rounded-3xl bg-gradient-to-r from-slate-900 via-blue-900 to-slate-800 p-8 text-white shadow-xl">
-                <h1 className="mt-3 text-3xl font-bold sm:text-4xl">Lesson Master</h1>
-
-                <div className="mt-6 grid gap-4 sm:grid-cols-3">
-                    <div className="rounded-2xl bg-white/10 p-4 backdrop-blur-sm">
-                        <p className="text-sm text-blue-100">Visible lessons</p>
-                        <p className="mt-2 text-2xl font-semibold">{filteredLessons.length}</p>
-                    </div>
-                    <div className="rounded-2xl bg-white/10 p-4 backdrop-blur-sm">
-                        <p className="text-sm text-blue-100">Active lessons</p>
-                        <p className="mt-2 text-2xl font-semibold">{activeCount}</p>
-                    </div>
-                    <div className="rounded-2xl bg-white/10 p-4 backdrop-blur-sm">
-                        <p className="text-sm text-blue-100">Connected courses</p>
-                        <p className="mt-2 text-2xl font-semibold">{courses.length}</p>
-                    </div>
-                </div>
-            </section> */}
-
             <section className="grid gap-8 lg:grid-cols-[1.1fr,0.9fr]">
                 <div className="rounded-3xl bg-white p-6 shadow-lg sm:p-8">
                     <div className="mb-6">
@@ -426,7 +488,7 @@ export default function LessonMaster() {
                     </div>
 
                     <form onSubmit={handleSubmit} className="space-y-5">
-                        {/* Course dropdown with search */}
+                        {/* Course dropdown */}
                         <div>
                             <label className="mb-2 block text-sm font-semibold text-slate-700">
                                 Course <span className="text-red-500">*</span>
@@ -438,9 +500,7 @@ export default function LessonMaster() {
                                 >
                                     <span className={form.course ? "text-slate-900" : "text-slate-400"}>
                                         {form.course ? (
-                                            <CourseOptionRow
-                                                course={courses.find((c) => c._id === form.course) || {}}
-                                            />
+                                            <CourseOptionRow course={courses.find((c) => c._id === form.course) || {}} />
                                         ) : (
                                             "Select course"
                                         )}
@@ -465,14 +525,12 @@ export default function LessonMaster() {
                                                     <div
                                                         key={course._id}
                                                         onClick={() => {
-                                                            handleCourseSelectChange({
-                                                                target: { value: course._id },
-                                                            });
+                                                            handleCourseSelectChange({ target: { value: course._id } });
                                                             setDropdownOpen(false);
                                                         }}
                                                         className="px-4 py-2 hover:bg-blue-50 cursor-pointer text-sm"
                                                     >
-                                                        {formatCourseOption(course)}
+                                                        <CourseOptionRow course={course} />
                                                     </div>
                                                 ))
                                             )}
@@ -480,9 +538,7 @@ export default function LessonMaster() {
                                     </div>
                                 )}
                             </div>
-                            {errors.course && (
-                                <p className="mt-2 text-sm text-red-600">{errors.course}</p>
-                            )}
+                            {errors.course && <p className="mt-2 text-sm text-red-600">{errors.course}</p>}
                         </div>
 
                         {/* Lesson Title */}
@@ -498,9 +554,7 @@ export default function LessonMaster() {
                                 placeholder="Enter lesson title"
                                 className="w-full rounded-xl border border-slate-300 px-4 py-3 outline-none transition focus:border-blue-500"
                             />
-                            {errors.lesson_title && (
-                                <p className="mt-2 text-sm text-red-600">{errors.lesson_title}</p>
-                            )}
+                            {errors.lesson_title && <p className="mt-2 text-sm text-red-600">{errors.lesson_title}</p>}
                         </div>
 
                         {/* Lesson Code */}
@@ -516,9 +570,7 @@ export default function LessonMaster() {
                                 placeholder="Example: ALG-L1"
                                 className="w-full rounded-xl border border-slate-300 px-4 py-3 uppercase outline-none transition focus:border-blue-500"
                             />
-                            {errors.lesson_code && (
-                                <p className="mt-2 text-sm text-red-600">{errors.lesson_code}</p>
-                            )}
+                            {errors.lesson_code && <p className="mt-2 text-sm text-red-600">{errors.lesson_code}</p>}
                         </div>
 
                         {/* Description */}
@@ -565,10 +617,8 @@ export default function LessonMaster() {
 
             {/* Lessons Table */}
             <section className="rounded-3xl bg-white p-6 shadow-lg sm:p-8">
-                <div className="mb-6 flex flex-col gap-4">
-                    <div>
-                        <h2 className="text-2xl font-bold text-slate-900">Lessons</h2>
-                    </div>
+                <div className="mb-6">
+                    <h2 className="text-2xl font-bold text-slate-900">Lessons</h2>
                 </div>
 
                 {isLoading ? (
@@ -595,52 +645,75 @@ export default function LessonMaster() {
                                 </tr>
                             </thead>
                             <tbody className="text-sm text-slate-700">
-                                {paginatedLessons.map((lesson) => (
-                                    <tr key={lesson._id} className="border-t border-slate-200">
-                                        <td className="px-4 py-3 font-semibold text-slate-900">
-                                            {lesson.lesson_id}
-                                        </td>
-                                        <td className="px-4 py-3">
-                                            <div className="flex flex-col">
-                                                <span>{lesson.course?.course_name || "-"}</span>
-                                                <span className="text-xs text-slate-500">
-                                                    {lesson.course?.course_code || ""}
+                                {paginatedLessons.map((lesson) => {
+                                    const savedCount = savedBankCountMap[lesson._id] || 0;
+                                    return (
+                                        <tr key={lesson._id} className="border-t border-slate-200">
+                                            <td className="px-4 py-3 font-semibold text-slate-900">
+                                                {lesson.lesson_id}
+                                            </td>
+                                            <td className="px-4 py-3">
+                                                <div className="flex items-center gap-3">
+                                                    <CourseOptionRow course={lesson.course || {}} />
+                                                </div>
+                                            </td>
+                                            <td className="px-4 py-3">{lesson.lesson_title}</td>
+                                            <td className="px-4 py-3">{lesson.lesson_code}</td>
+                                            <td className="px-4 py-3">
+                                                <span className="block max-w-[140px] truncate" title={lesson.description}>
+                                                    {getDescriptionPreview(lesson.description)}
                                                 </span>
-                                            </div>
-                                        </td>
-                                        <td className="px-4 py-3">{lesson.lesson_title}</td>
-                                        <td className="px-4 py-3">{lesson.lesson_code}</td>
-                                        <td className="px-4 py-3">
-                                            <span
-                                                className="block max-w-[140px] truncate"
-                                                title={lesson.description}
-                                            >
-                                                {getDescriptionPreview(lesson.description)}
-                                            </span>
-                                        </td>
-                                        <td className="px-4 py-3">
-                                            <div className="inline-flex items-center gap-2">
-                                                <span
-                                                    className={`rounded-full px-3 py-1 text-xs font-semibold ${lesson.status === "Active"
-                                                        ? "bg-emerald-100 text-emerald-700"
-                                                        : "bg-slate-200 text-slate-700"
+                                            </td>
+                                            <td className="px-4 py-3">
+                                                <div className="inline-flex items-center gap-2">
+                                                    <span
+                                                        className={`rounded-full px-3 py-1 text-xs font-semibold ${
+                                                            lesson.status === "Active"
+                                                                ? "bg-emerald-100 text-emerald-700"
+                                                                : "bg-slate-200 text-slate-700"
                                                         }`}
-                                                >
-                                                    {lesson.status}
-                                                </span>
-                                                <button
-                                                    type="button"
-                                                    onClick={() => openEditModal(lesson)}
-                                                    className="text-slate-500 transition hover:text-blue-700"
-                                                    aria-label={`Edit ${lesson.lesson_title}`}
-                                                    title="Edit lesson"
-                                                >
-                                                    <Pencil size={16} strokeWidth={2} />
-                                                </button>
-                                            </div>
-                                        </td>
-                                    </tr>
-                                ))}
+                                                    >
+                                                        {lesson.status}
+                                                    </span>
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => openEditModal(lesson)}
+                                                        className="text-slate-500 transition hover:text-blue-700"
+                                                        aria-label={`Edit ${lesson.lesson_title}`}
+                                                        title="Edit lesson"
+                                                    >
+                                                        <Pencil size={16} strokeWidth={2} />
+                                                    </button>
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => setDeleteTarget(lesson)}
+                                                        disabled={deletingId === lesson._id}
+                                                        className="text-slate-500 transition hover:text-red-600 disabled:cursor-not-allowed disabled:opacity-50"
+                                                        aria-label={`Delete ${lesson.lesson_title}`}
+                                                        title="Delete lesson"
+                                                    >
+                                                        <Trash2 size={16} strokeWidth={2} />
+                                                    </button>
+                                                    {/* ── Question Bank "+" button ── */}
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => openQuestionModal(lesson)}
+                                                        className="relative flex h-6 w-6 items-center justify-center rounded-full bg-blue-600 text-white transition hover:bg-blue-700"
+                                                        aria-label={`Upload question bank for ${lesson.lesson_title}`}
+                                                        title="Upload Question Bank"
+                                                    >
+                                                        <Plus size={13} strokeWidth={2.5} />
+                                                        {savedCount > 0 && (
+                                                            <span className="absolute -right-1.5 -top-1.5 flex h-4 w-4 items-center justify-center rounded-full bg-emerald-500 text-[9px] font-bold text-white">
+                                                                {savedCount}
+                                                            </span>
+                                                        )}
+                                                    </button>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    );
+                                })}
                             </tbody>
                         </table>
 
@@ -668,9 +741,7 @@ export default function LessonMaster() {
 
                                 <button
                                     type="button"
-                                    onClick={() =>
-                                        setCurrentPage((prev) => Math.min(prev + 1, totalPages))
-                                    }
+                                    onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages))}
                                     disabled={currentPage === totalPages}
                                     className="rounded-xl border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:text-slate-400"
                                     aria-label="Next page"
@@ -682,6 +753,131 @@ export default function LessonMaster() {
                     </div>
                 )}
             </section>
+
+            {/* ── Question Bank Modal ──────────────────────────────────────────────── */}
+            {questionModalLesson && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/40 px-4">
+                    <div
+                        className="flex w-full max-w-xl flex-col rounded-3xl bg-white shadow-2xl"
+                        style={{ maxHeight: "88vh" }}
+                    >
+                        {/* Fixed Header */}
+                        <div className="flex items-start justify-between gap-4 border-b border-slate-100 px-6 pb-4 pt-6">
+                            <div>
+                                <h3 className="text-xl font-bold text-slate-900">Question Bank</h3>
+                                <p className="mt-0.5 text-sm text-slate-500">
+                                    {questionModalLesson.lesson_title}{" "}
+                                    <span className="font-medium text-slate-400">
+                                        ({questionModalLesson.lesson_code})
+                                    </span>
+                                </p>
+                            </div>
+
+                            {/* Right side: single global "+" Add Bank button + close */}
+                            <div className="flex shrink-0 items-center gap-2">
+                                <button
+                                    type="button"
+                                    onClick={handleAddBank}
+                                    disabled={!canAddBank}
+                                    className="flex items-center gap-1.5 rounded-xl bg-blue-600 px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-blue-300"
+                                    title="Add question bank"
+                                >
+                                    <Plus size={12} strokeWidth={2.5} />
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={closeQuestionModal}
+                                    className="rounded-full border border-slate-200 p-1.5 text-slate-500 transition hover:border-slate-300 hover:text-slate-800"
+                                    aria-label="Close modal"
+                                >
+                                    <X size={16} strokeWidth={2} />
+                                </button>
+                            </div>
+                        </div>
+
+                        {/* Scrollable Cards Area */}
+                        <div className="flex-1 space-y-4 overflow-y-auto px-6 py-4">
+                            {questionBanks.map((bank, index) => (
+                                <div
+                                    key={index}
+                                    className="space-y-3 rounded-2xl border border-slate-200 bg-slate-50 p-4"
+                                >
+                                    {/* Card Header */}
+                                    <div className="flex items-center justify-between">
+                                        <div className="flex items-center gap-2">
+                                            <span className="text-sm font-semibold text-slate-600">
+                                                Question Bank {index + 1}
+                                            </span>
+                                        </div>
+                                        {/* Trash — only visible when more than 1 card */}
+                                        {questionBanks.length > 1 && (
+                                            <button
+                                                type="button"
+                                                onClick={() => handleRemoveBank(index)}
+                                                className="flex h-6 w-6 items-center justify-center rounded-full border border-slate-200 text-slate-400 transition hover:border-red-200 hover:text-red-500"
+                                                title="Remove this bank"
+                                            >
+                                                <Trash2 size={12} strokeWidth={2} />
+                                            </button>
+                                        )}
+                                    </div>
+
+                                    {/* Title Input */}
+                                    <div>
+                                        <input
+                                            type="text"
+                                            value={bank.title}
+                                            onChange={(e) =>
+                                                handleBankFieldChange(index, "title", e.target.value)
+                                            }
+                                            placeholder="Question bank title"
+                                            className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm outline-none transition focus:border-blue-500"
+                                        />
+                                    </div>
+
+                                    {/* Content Textarea */}
+                                    <div>
+                                        <textarea
+                                            value={bank.content}
+                                            onChange={(e) =>
+                                                handleBankFieldChange(index, "content", e.target.value)
+                                            }
+                                            rows={4}
+                                            placeholder="Enter question bank Content"
+                                            className="w-full resize-y rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm outline-none transition focus:border-blue-500"
+                                        />
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+
+                        {/* Fixed Footer */}
+                        <div className="flex items-center justify-between gap-3 border-t border-slate-100 px-6 py-4">
+                            <p className="text-xs text-slate-400">
+                                {questionBanks.filter((b) => b.title.trim() || b.content.trim()).length} bank
+                                {questionBanks.filter((b) => b.title.trim() || b.content.trim()).length !== 1 ? "s" : ""} with content
+                            </p>
+                            <div className="flex gap-3">
+                                <button
+                                    type="button"
+                                    onClick={closeQuestionModal}
+                                    className="rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
+                                >
+                                    Cancel
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={handleUpload}
+                                    className="rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-blue-700"
+                                >
+                                    Save
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+            {/* ───────────────────────────────────────────────────────────────────── */}
 
             {/* Edit Modal */}
             {isEditOpen && (
@@ -705,22 +901,56 @@ export default function LessonMaster() {
                                 <label className="mb-2 block text-sm font-semibold text-slate-700">
                                     Course *
                                 </label>
-                                <select
-                                    name="course"
-                                    value={editForm.course}
-                                    onChange={handleEditChange}
-                                    className="w-full rounded-xl border border-slate-300 px-4 py-3 outline-none transition focus:border-blue-500"
-                                >
-                                    <option value="">Select course</option>
-                                    {courses.map((course) => (
-                                        <option key={course._id} value={course._id}>
-                                            {course.course_name} ({course.course_code})
-                                        </option>
-                                    ))}
-                                </select>
-                                {editErrors.course && (
-                                    <p className="mt-2 text-sm text-red-600">{editErrors.course}</p>
-                                )}
+                                <div className="relative">
+                                    <div
+                                        className="flex w-full cursor-pointer items-center justify-between rounded-xl border border-slate-300 px-4 py-3"
+                                        onClick={() =>
+                                            editableCourses.length > 0 && setEditDropdownOpen((prev) => !prev)
+                                        }
+                                    >
+                                        <div className={editForm.course ? "text-slate-900" : "text-slate-400"}>
+                                            {editForm.course ? (
+                                                <CourseOptionRow
+                                                    course={editableCourses.find((course) => course._id === editForm.course) || {}}
+                                                />
+                                            ) : (
+                                                "Select course"
+                                            )}
+                                        </div>
+                                        <span>▾</span>
+                                    </div>
+
+                                    {editDropdownOpen && (
+                                        <div className="absolute z-50 mt-2 w-full rounded-xl border bg-white shadow-lg">
+                                            <input
+                                                type="text"
+                                                value={editCourseSearchTerm}
+                                                onChange={(e) => setEditCourseSearchTerm(e.target.value)}
+                                                placeholder="Search course..."
+                                                className="w-full border-b px-4 py-2 outline-none"
+                                            />
+                                            <div className="max-h-60 overflow-y-auto">
+                                                {editCourseSuggestions.length === 0 ? (
+                                                    <p className="p-3 text-sm text-slate-400">No courses found</p>
+                                                ) : (
+                                                    editCourseSuggestions.map((course) => (
+                                                        <div
+                                                            key={course._id}
+                                                            onClick={() => {
+                                                                handleEditChange({ target: { name: "course", value: course._id } });
+                                                                setEditDropdownOpen(false);
+                                                            }}
+                                                            className="cursor-pointer px-4 py-2 text-sm hover:bg-blue-50"
+                                                        >
+                                                            <CourseOptionRow course={course} />
+                                                        </div>
+                                                    ))
+                                                )}
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
+                                {editErrors.course && <p className="mt-2 text-sm text-red-600">{editErrors.course}</p>}
                             </div>
 
                             <div>
@@ -734,9 +964,7 @@ export default function LessonMaster() {
                                     onChange={handleEditChange}
                                     className="w-full rounded-xl border border-slate-300 px-4 py-3 outline-none transition focus:border-blue-500"
                                 />
-                                {editErrors.lesson_title && (
-                                    <p className="mt-2 text-sm text-red-600">{editErrors.lesson_title}</p>
-                                )}
+                                {editErrors.lesson_title && <p className="mt-2 text-sm text-red-600">{editErrors.lesson_title}</p>}
                             </div>
 
                             <div>
@@ -765,9 +993,7 @@ export default function LessonMaster() {
                                     <option value="Active">Active</option>
                                     <option value="Inactive">Inactive</option>
                                 </select>
-                                {editErrors.status && (
-                                    <p className="mt-2 text-sm text-red-600">{editErrors.status}</p>
-                                )}
+                                {editErrors.status && <p className="mt-2 text-sm text-red-600">{editErrors.status}</p>}
                             </div>
 
                             <div className="flex justify-end gap-3">
@@ -790,6 +1016,21 @@ export default function LessonMaster() {
                     </div>
                 </div>
             )}
+
+            <ConfirmModal
+                open={Boolean(deleteTarget)}
+                title="Delete Lesson"
+                message={
+                    deleteTarget
+                        ? `Delete "${deleteTarget.lesson_title}"? This will remove the lesson and its saved question bank.`
+                        : ""
+                }
+                confirmLabel="Delete lesson"
+                danger
+                isLoading={deletingId === deleteTarget?._id}
+                onCancel={() => setDeleteTarget(null)}
+                onConfirm={() => handleDeleteLesson(deleteTarget)}
+            />
         </div>
     );
 }

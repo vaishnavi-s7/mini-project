@@ -1,13 +1,15 @@
 import { useEffect, useMemo, useState } from "react";
-import { ChevronLeft, ChevronRight, Pencil } from "lucide-react";
+import { ChevronLeft, ChevronRight, Pencil, Trash2 } from "lucide-react";
 import toast from "react-hot-toast";
 import {
   createCourse,
+  deleteCourse,
   getCourses,
   updateCourse,
 } from "../services/courseService";
 import { getSubjects } from "../services/subjectService";
 import { getLocalSubjectIcon } from "../utils/subjectIcons";
+import ConfirmModal from "../components/common/ConfirmModal";
  
 const initialForm = {
   course_name: "",
@@ -76,6 +78,8 @@ export default function CourseMaster() {
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [editDropdownOpen, setEditDropdownOpen] = useState(false);
   const [editSubjectSearchTerm, setEditSubjectSearchTerm] = useState("");
+  const [deletingId, setDeletingId] = useState("");
+  const [deleteTarget, setDeleteTarget] = useState(null);
  
   const loadSubjects = async () => {
     try {
@@ -380,6 +384,24 @@ export default function CourseMaster() {
       setIsUpdating(false);
     }
   };
+
+  const handleDeleteCourse = async (course) => {
+    if (!course) {
+      return;
+    }
+
+    try {
+      setDeletingId(course._id);
+      const res = await deleteCourse(course._id);
+      toast.success(res.data?.message || "Course deleted successfully");
+      await loadCourses();
+      setDeleteTarget(null);
+    } catch (error) {
+      toast.error(error.response?.data?.message || "Failed to delete course");
+    } finally {
+      setDeletingId("");
+    }
+  };
  
   return (
     <div className="space-y-8">
@@ -627,6 +649,16 @@ export default function CourseMaster() {
                         >
                           <Pencil size={16} strokeWidth={2} />
                         </button>
+                        <button
+                          type="button"
+                          onClick={() => setDeleteTarget(course)}
+                          disabled={deletingId === course._id}
+                          className="text-slate-500 transition hover:text-red-600 disabled:cursor-not-allowed disabled:opacity-50"
+                          aria-label={`Delete ${course.course_name}`}
+                          title="Delete course"
+                        >
+                          <Trash2 size={16} strokeWidth={2} />
+                        </button>
                       </div>
                     </td>
                   </tr>
@@ -835,8 +867,21 @@ export default function CourseMaster() {
           </div>
         </div>
       )}
+
+      <ConfirmModal
+        open={Boolean(deleteTarget)}
+        title="Delete Course"
+        message={
+          deleteTarget
+            ? `Delete "${deleteTarget.course_name}"? This will also remove all lessons under this course.`
+            : ""
+        }
+        confirmLabel="Delete course"
+        danger
+        isLoading={deletingId === deleteTarget?._id}
+        onCancel={() => setDeleteTarget(null)}
+        onConfirm={() => handleDeleteCourse(deleteTarget)}
+      />
     </div>
   );
 }
- 
- 

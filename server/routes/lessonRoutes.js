@@ -1,5 +1,6 @@
 import express from "express";
 import {
+  deleteLesson,
   createLesson,
   getLessonById,
   getLessons,
@@ -13,6 +14,7 @@ const router = express.Router();
 router.get("/", protect, getLessons);
 router.get("/:id", protect, getLessonById);
 router.post("/", protect, createLesson);
+router.delete("/:id", protect, deleteLesson);
 router.put("/:id", protect, updateLesson);
 router.put("/:id/question-bank", protect, updateLessonQuestionBank);
  

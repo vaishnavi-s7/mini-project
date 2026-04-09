@@ -1,5 +1,6 @@
 import express from "express";
 import {
+  deleteSubject,
   createSubject,
   getSubjects,
   updateSubject,
@@ -10,8 +11,7 @@ const router = express.Router();
  
 router.get("/", protect, getSubjects);
 router.post("/", protect, createSubject);
+router.delete("/:id", protect, deleteSubject);
 router.put("/:id", protect, updateSubject);
- 
+
 export default router;
- 
- 

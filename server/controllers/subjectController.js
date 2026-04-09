@@ -1,4 +1,7 @@
 import Subject from "../models/Subject.js";
+import Course from "../models/Course.js";
+import Lesson from "../models/Lesson.js";
+import { resequenceDocuments } from "../utils/resequenceDocuments.js";
  
 const buildSubjectId = (sequenceNumber) =>
   `SUB${String(sequenceNumber).padStart(3, "0")}`;
@@ -38,8 +41,12 @@ export const createSubject = async (req, res) => {
       });
     }
  
-    const lastSubject = await Subject.findOne().sort({ sequence_number: -1 });
-    const nextSequence = (lastSubject?.sequence_number || 0) + 1;
+    const subjects = await resequenceDocuments(
+      Subject,
+      buildSubjectId,
+      "subject_id"
+    );
+    const nextSequence = subjects.length + 1;
  
     const subject = await Subject.create({
       subject_id: buildSubjectId(nextSequence),
@@ -71,8 +78,12 @@ export const createSubject = async (req, res) => {
  
 export const getSubjects = async (_req, res) => {
   try {
-    const subjects = await Subject.find().sort({ sequence_number: 1 });
- 
+    const subjects = await resequenceDocuments(
+      Subject,
+      buildSubjectId,
+      "subject_id"
+    );
+
     res.json({
       success: true,
       data: subjects,
@@ -143,6 +154,42 @@ export const updateSubject = async (req, res) => {
     console.log("UPDATE SUBJECT ERROR:", error);
     res.status(500).json({
       message: "Failed to update subject",
+    });
+  }
+};
+
+export const deleteSubject = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const subject = await Subject.findById(id);
+
+    if (!subject) {
+      return res.status(404).json({
+        message: "Subject not found",
+      });
+    }
+
+    const courses = await Course.find({ subject: id }).select("_id");
+    const courseIds = courses.map((course) => course._id);
+
+    if (courseIds.length > 0) {
+      await Lesson.deleteMany({ course: { $in: courseIds } });
+      await Course.deleteMany({ subject: id });
+    }
+
+    await Subject.findByIdAndDelete(id);
+
+    await resequenceDocuments(Subject, buildSubjectId, "subject_id");
+    await resequenceDocuments(Course, (sequenceNumber) => `CRS${String(sequenceNumber).padStart(3, "0")}`, "course_id");
+    await resequenceDocuments(Lesson, (sequenceNumber) => `LES${String(sequenceNumber).padStart(3, "0")}`, "lesson_id");
+
+    res.json({
+      message: "Subject deleted successfully",
+    });
+  } catch (error) {
+    console.log("DELETE SUBJECT ERROR:", error);
+    res.status(500).json({
+      message: "Failed to delete subject",
     });
   }
 };

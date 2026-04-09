@@ -1,12 +1,14 @@
 import { useEffect, useMemo, useState } from "react";
-import { ChevronLeft, ChevronRight, Pencil } from "lucide-react";
+import { ChevronLeft, ChevronRight, Pencil, Trash2 } from "lucide-react";
 import toast from "react-hot-toast";
 import {
   createSubject,
+  deleteSubject,
   getSubjects,
   updateSubject,
 } from "../services/subjectService";
 import { getLocalSubjectIcon } from "../utils/subjectIcons";
+import ConfirmModal from "../components/common/ConfirmModal";
  
 const initialForm = {
   subject_name: "",
@@ -35,6 +37,8 @@ export default function SubjectMaster() {
   const [editErrors, setEditErrors] = useState({});
   const [isUpdating, setIsUpdating] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
+  const [deletingId, setDeletingId] = useState("");
+  const [deleteTarget, setDeleteTarget] = useState(null);
  
   const validateForm = () => {
     const nextErrors = {};
@@ -211,6 +215,24 @@ export default function SubjectMaster() {
       toast.error(error.response?.data?.message || "Failed to update subject");
     } finally {
       setIsUpdating(false);
+    }
+  };
+
+  const handleDeleteSubject = async (subject) => {
+    if (!subject) {
+      return;
+    }
+
+    try {
+      setDeletingId(subject._id);
+      const res = await deleteSubject(subject._id);
+      toast.success(res.data?.message || "Subject deleted successfully");
+      await loadSubjects();
+      setDeleteTarget(null);
+    } catch (error) {
+      toast.error(error.response?.data?.message || "Failed to delete subject");
+    } finally {
+      setDeletingId("");
     }
   };
  
@@ -439,6 +461,16 @@ export default function SubjectMaster() {
                         >
                           <Pencil size={16} strokeWidth={2} />
                         </button>
+                        <button
+                          type="button"
+                          onClick={() => setDeleteTarget(subject)}
+                          disabled={deletingId === subject._id}
+                          className="text-slate-500 transition hover:text-red-600 disabled:cursor-not-allowed disabled:opacity-50"
+                          aria-label={`Delete ${subject.subject_name}`}
+                          title="Delete subject"
+                        >
+                          <Trash2 size={16} strokeWidth={2} />
+                        </button>
                       </div>
                     </td>
                   </tr>
@@ -608,6 +640,21 @@ export default function SubjectMaster() {
           </div>
         </div>
       )}
+
+      <ConfirmModal
+        open={Boolean(deleteTarget)}
+        title="Delete Subject"
+        message={
+          deleteTarget
+            ? `Delete "${deleteTarget.subject_name}"? This will also remove the courses and lessons linked to it.`
+            : ""
+        }
+        confirmLabel="Delete subject"
+        danger
+        isLoading={deletingId === deleteTarget?._id}
+        onCancel={() => setDeleteTarget(null)}
+        onConfirm={() => handleDeleteSubject(deleteTarget)}
+      />
     </div>
   );
 }

@@ -1,5 +1,7 @@
 import Course from "../models/Course.js";
 import Subject from "../models/Subject.js";
+import Lesson from "../models/Lesson.js";
+import { resequenceDocuments } from "../utils/resequenceDocuments.js";
 
 const buildCourseId = (sequenceNumber) =>
   `CRS${String(sequenceNumber).padStart(3, "0")}`;
@@ -52,8 +54,8 @@ export const createCourse = async (req, res) => {
       });
     }
 
-    const lastCourse = await Course.findOne().sort({ sequence_number: -1 });
-    const nextSequence = (lastCourse?.sequence_number || 0) + 1;
+    const courses = await resequenceDocuments(Course, buildCourseId, "course_id");
+    const nextSequence = courses.length + 1;
 
     const course = await Course.create({
       course_id: buildCourseId(nextSequence),
@@ -91,6 +93,8 @@ export const createCourse = async (req, res) => {
 
 export const getCourses = async (_req, res) => {
   try {
+    await resequenceDocuments(Course, buildCourseId, "course_id");
+
     const courses = await Course.find()
       .populate("subject", "subject_id subject_name subject_code status")
       .sort({ sequence_number: 1 });
@@ -175,6 +179,33 @@ export const updateCourse = async (req, res) => {
     console.log("UPDATE COURSE ERROR:", error);
     res.status(500).json({
       message: "Failed to update course",
+    });
+  }
+};
+
+export const deleteCourse = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const course = await Course.findById(id);
+
+    if (!course) {
+      return res.status(404).json({
+        message: "Course not found",
+      });
+    }
+
+    await Lesson.deleteMany({ course: id });
+    await Course.findByIdAndDelete(id);
+    await resequenceDocuments(Course, buildCourseId, "course_id");
+    await resequenceDocuments(Lesson, (sequenceNumber) => `LES${String(sequenceNumber).padStart(3, "0")}`, "lesson_id");
+
+    res.json({
+      message: "Course deleted successfully",
+    });
+  } catch (error) {
+    console.log("DELETE COURSE ERROR:", error);
+    res.status(500).json({
+      message: "Failed to delete course",
     });
   }
 };

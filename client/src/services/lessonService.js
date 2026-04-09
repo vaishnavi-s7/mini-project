@@ -10,3 +10,5 @@ export const updateLesson = (id, data) => API.put(`/lessons/${id}`, data);
 
 export const updateLessonQuestionBank = (id, data) =>
   API.put(`/lessons/${id}/question-bank`, data);
+
+export const deleteLesson = (id) => API.delete(`/lessons/${id}`);

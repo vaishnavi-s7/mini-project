@@ -1,7 +1,7 @@
-import { Plus, Save } from "lucide-react";
+import { Plus, Save, Trash2 } from "lucide-react";
 import { useEffect, useState } from "react";
 import toast from "react-hot-toast";
-import { useNavigate, useParams } from "react-router-dom";
+import { useParams, useNavigate } from "react-router-dom";
 import {
   getLessonById,
   updateLessonQuestionBank,
@@ -13,14 +13,18 @@ const createQuestionBankItem = (index = 0) => ({
   content: "",
 });
 
+const createInitialQuestionBanks = () =>
+  [createQuestionBankItem(0)];
+
 export default function LessonDetails() {
   const { lessonId } = useParams();
-  const navigate = useNavigate();
   const [lesson, setLesson] = useState(null);
   const [questionBank, setQuestionBank] = useState([]);
   const [editingIndex, setEditingIndex] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
+
+  const navigate = useNavigate();
 
   useEffect(() => {
     const loadLesson = async () => {
@@ -32,12 +36,14 @@ export default function LessonDetails() {
         setLesson(lessonData);
         setQuestionBank(
           Array.isArray(lessonData?.question_bank)
-            ? lessonData.question_bank.map((item, index) => ({
+            ? lessonData.question_bank.length > 0
+              ? lessonData.question_bank.map((item, index) => ({
                 local_id: item._id || `existing-${index}`,
                 title: item.title || "",
                 content: item.content || "",
               }))
-            : []
+              : createInitialQuestionBanks()
+            : createInitialQuestionBanks()
         );
       } catch (error) {
         toast.error(error.response?.data?.message || "Failed to load lesson details");
@@ -58,18 +64,59 @@ export default function LessonDetails() {
   };
 
   const handleAddQuestionBank = () => {
-    setQuestionBank((prev) => [...prev, createQuestionBankItem(prev.length)]);
-    setEditingIndex(questionBank.length);
+    const hasIncompleteBlock = questionBank.some(
+      (item) => !item.title.trim() || !item.content.trim()
+    );
+
+    if (hasIncompleteBlock) {
+      toast.error("Fill the current question box before adding a new one.");
+      return;
+    }
+
+    const nextIndex = questionBank.length;
+    setQuestionBank((prev) => [...prev, createQuestionBankItem(nextIndex)]);
+    setEditingIndex(nextIndex);
+  };
+
+  const canAddQuestionBank = questionBank.every(
+    (item) => item.title.trim() && item.content.trim()
+  );
+
+  const handleDeleteQuestionBank = (indexToDelete) => {
+    setQuestionBank((prev) => prev.filter((_, index) => index !== indexToDelete));
+    setEditingIndex((prev) => {
+      if (prev === null) return null;
+      if (prev === indexToDelete) return null;
+      return prev > indexToDelete ? prev - 1 : prev;
+    });
   };
 
   const handleSave = async () => {
     try {
+      if (questionBank.length === 0) {
+        toast.error("Add at least one question block before saving.");
+        return;
+      }
+
+      const normalizedQuestionBank = questionBank.map((item) => ({
+        title: item.title.trim(),
+        content: item.content.trim(),
+      }));
+
+      const firstInvalidBlockIndex = normalizedQuestionBank.findIndex(
+        (item) => !item.title || !item.content
+      );
+
+      if (firstInvalidBlockIndex !== -1) {
+        toast.error(
+          `Question block ${firstInvalidBlockIndex + 1} is incomplete. Fill title and content.`
+        );
+        return;
+      }
+
       setIsSaving(true);
       const payload = {
-        question_bank: questionBank.map((item) => ({
-          title: item.title.trim(),
-          content: item.content.trim(),
-        })),
+        question_bank: normalizedQuestionBank,
       };
 
       const res = await updateLessonQuestionBank(lessonId, payload);
@@ -79,10 +126,10 @@ export default function LessonDetails() {
       setQuestionBank(
         Array.isArray(updatedLesson?.question_bank)
           ? updatedLesson.question_bank.map((item, index) => ({
-              local_id: item._id || `saved-${index}`,
-              title: item.title || "",
-              content: item.content || "",
-            }))
+            local_id: item._id || `saved-${index}`,
+            title: item.title || "",
+            content: item.content || "",
+          }))
           : []
       );
       setEditingIndex(null);
@@ -101,10 +148,10 @@ export default function LessonDetails() {
           <div>
             <button
               type="button"
-              onClick={() => navigate("/master-dashboard")}
+              onClick={() => navigate(-1)}
               className="text-sm font-semibold text-blue-600 transition hover:text-blue-700"
             >
-              Back to Master Dashboard
+              Back
             </button>
             <h1 className="mt-2 text-3xl font-bold text-slate-900">
               {lesson?.lesson_title || "Lesson Details"}
@@ -119,7 +166,8 @@ export default function LessonDetails() {
             <button
               type="button"
               onClick={handleAddQuestionBank}
-              className="inline-flex items-center gap-2 rounded-xl border border-slate-200 px-4 py-3 font-semibold text-slate-700 transition hover:bg-slate-50"
+              disabled={!canAddQuestionBank}
+              className="inline-flex items-center gap-2 rounded-xl border border-slate-200 px-4 py-3 font-semibold text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
             >
               <Plus size={18} />
               Add Question Bank
@@ -147,60 +195,74 @@ export default function LessonDetails() {
             <p className="text-slate-500">No question bank entries added yet.</p>
           </div>
         ) : (
-          <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
-            {questionBank.map((item, index) => {
-              const isEditing = editingIndex === index;
+          <div className="max-h-[38rem] overflow-y-auto pr-1 no-scrollbar">
+            <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
+              {questionBank.map((item, index) => {
+                const isEditing = editingIndex === index;
 
-              return (
-                <div
-                  key={item.local_id}
-                  className="rounded-3xl border border-slate-200 bg-slate-50 p-5 shadow-sm transition hover:shadow-md"
-                >
-                  {isEditing ? (
-                    <div className="space-y-4">
-                      <input
-                        type="text"
-                        value={item.title}
-                        onChange={(event) =>
-                          handleQuestionBankChange(index, "title", event.target.value)
-                        }
-                        placeholder="Question bank title"
-                        className="w-full rounded-xl border border-slate-300 px-4 py-3 outline-none transition focus:border-blue-500"
-                      />
-                      <textarea
-                        value={item.content}
-                        onChange={(event) =>
-                          handleQuestionBankChange(index, "content", event.target.value)
-                        }
-                        rows="8"
-                        placeholder="Enter question bank content"
-                        className="w-full rounded-xl border border-slate-300 px-4 py-3 outline-none transition focus:border-blue-500"
-                      />
+                return (
+                  <div
+                    key={item.local_id}
+                    className="rounded-3xl border border-slate-200 bg-slate-50 p-5 shadow-sm transition hover:shadow-md"
+                  >
+                    <div className="mb-3 flex justify-end">
                       <button
                         type="button"
-                        onClick={() => setEditingIndex(null)}
-                        className="text-sm font-semibold text-blue-600 transition hover:text-blue-700"
+                        onClick={() => handleDeleteQuestionBank(index)}
+                        className="rounded-lg p-2 text-slate-400 transition hover:bg-red-50 hover:text-red-600"
+                        title="Delete question block"
+                        aria-label={`Delete question block ${index + 1}`}
                       >
-                        Done editing
+                        <Trash2 size={16} />
                       </button>
                     </div>
-                  ) : (
-                    <button
-                      type="button"
-                      onClick={() => setEditingIndex(index)}
-                      className="block w-full text-left"
-                    >
-                      <p className="text-lg font-semibold text-slate-900">
-                        {item.title || `Question Bank ${index + 1}`}
-                      </p>
-                      <p className="mt-3 whitespace-pre-wrap text-sm leading-6 text-slate-600">
-                        {item.content || "Click to add question bank content"}
-                      </p>
-                    </button>
-                  )}
-                </div>
-              );
-            })}
+
+                    {isEditing ? (
+                      <div className="space-y-4">
+                        <input
+                          type="text"
+                          value={item.title}
+                          onChange={(event) =>
+                            handleQuestionBankChange(index, "title", event.target.value)
+                          }
+                          placeholder="Question bank title"
+                          className="w-full rounded-xl border border-slate-300 px-4 py-3 outline-none transition focus:border-blue-500"
+                        />
+                        <textarea
+                          value={item.content}
+                          onChange={(event) =>
+                            handleQuestionBankChange(index, "content", event.target.value)
+                          }
+                          rows="8"
+                          placeholder="Enter question bank content"
+                          className="w-full rounded-xl border border-slate-300 px-4 py-3 outline-none transition focus:border-blue-500"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setEditingIndex(null)}
+                          className="text-sm font-semibold text-blue-600 transition hover:text-blue-700"
+                        >
+                          Done editing
+                        </button>
+                      </div>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => setEditingIndex(index)}
+                        className="block w-full text-left"
+                      >
+                        <p className="text-lg font-semibold text-slate-900">
+                          {item.title || `Question Bank ${index + 1}`}
+                        </p>
+                        <p className="mt-3 whitespace-pre-wrap text-sm leading-6 text-slate-600">
+                          {item.content || "Click to add question bank content"}
+                        </p>
+                      </button>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
           </div>
         )}
       </section>

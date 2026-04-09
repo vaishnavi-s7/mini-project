@@ -1,5 +1,6 @@
 import express from "express";
 import {
+  deleteCourse,
   createCourse,
   getCourses,
   updateCourse,
@@ -10,6 +11,7 @@ const router = express.Router();
 
 router.get("/", protect, getCourses);
 router.post("/", protect, createCourse);
+router.delete("/:id", protect, deleteCourse);
 router.put("/:id", protect, updateCourse);
 
 export default router;
