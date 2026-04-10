@@ -9,6 +9,7 @@ import {
 } from "../services/subjectService";
 import { getLocalSubjectIcon } from "../utils/subjectIcons";
 import ConfirmModal from "../components/common/ConfirmModal";
+import DescriptionPreview from "../components/common/DescriptionPreview";
  
 const initialForm = {
   subject_name: "",
@@ -23,7 +24,7 @@ const initialEditForm = {
   status: "Active",
 };
  
-const PAGE_SIZE = 5;
+const PAGE_SIZE = 3;
  
 export default function SubjectMaster() {
   const [form, setForm] = useState(initialForm);
@@ -434,12 +435,10 @@ export default function SubjectMaster() {
                     </td>
                     <td className="px-4 py-3">{subject.subject_code}</td>
                     <td className="px-4 py-3">
-                      <span
-                        className="block max-w-[420px] truncate"
-                        title={subject.description}
-                      >
-                        {subject.description}
-                      </span>
+                      <DescriptionPreview
+                        text={subject.description}
+                        className="block max-w-[420px]"
+                      />
                     </td>
                     <td className="px-4 py-3">
                       <div className="inline-flex items-center gap-2">

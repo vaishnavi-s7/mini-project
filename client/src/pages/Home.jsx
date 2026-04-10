@@ -10,6 +10,7 @@ import {
 import { getSubjects } from "../services/subjectService";
 import { getCourses } from "../services/courseService";
 import { getLessons } from "../services/lessonService";
+import DescriptionPreview from "../components/common/DescriptionPreview";
 
 const masterCards = [
   {
@@ -61,6 +62,19 @@ const kindLabels = {
   lesson: "Lesson",
 };
 
+const statusStyles = {
+  Active: "bg-emerald-100 text-emerald-700 ring-emerald-200",
+  Inactive: "bg-slate-100 text-slate-600 ring-slate-200",
+};
+
+const getStatusClassName = (status) => {
+  if (status === "Active") {
+    return statusStyles.Active;
+  }
+
+  return statusStyles.Inactive;
+};
+
 const modalKeyToKind = {
   subjects: "subject",
   courses: "course",
@@ -86,6 +100,19 @@ export default function Home() {
   const [isLoadingCounts, setIsLoadingCounts] = useState(false);
   const [activeModalKey, setActiveModalKey] = useState(null);
   const token = localStorage.getItem("token");
+
+  useEffect(() => {
+    if (!activeModalKey) {
+      return;
+    }
+
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+
+    return () => {
+      document.body.style.overflow = previousOverflow;
+    };
+  }, [activeModalKey]);
 
   useEffect(() => {
     const loadMasterCounts = async () => {
@@ -320,7 +347,10 @@ export default function Home() {
               </button>
             </div>
 
-            <div className="mt-6 max-h-[65vh] overflow-y-auto pr-1">
+            <div
+              className="mt-6 max-h-[65vh] overflow-y-auto pr-1"
+              style={{ overscrollBehavior: "contain" }}
+            >
               {modalItems.length === 0 ? (
                 <div className="rounded-2xl border border-dashed border-slate-200 px-6 py-12 text-center text-slate-500">
                   No records found.
@@ -350,13 +380,17 @@ export default function Home() {
                                 {item.subtitle}
                               </p>
                             </div>
-                            <span className="rounded-full bg-white px-2.5 py-1 text-xs font-semibold text-slate-600 ring-1 ring-slate-200">
-                              {item.status || "Inactive"}
+                            <span
+                              className={`rounded-full px-2.5 py-1 text-xs font-semibold ring-1 ${getStatusClassName(item.status)}`}
+                            >
+                              {item.status === "Active" ? "Active" : "Inactive"}
                             </span>
                           </div>
-                          <p className="mt-3 text-sm leading-6 text-slate-600">
-                            {item.description}
-                          </p>
+                          <DescriptionPreview
+                            as="p"
+                            text={item.description}
+                            className="mt-3 text-sm leading-6 text-slate-600"
+                          />
                         </div>
                       );
                     })()

@@ -14,6 +14,7 @@ import {
 import { getCourses } from "../services/courseService";
 import { getLocalSubjectIcon } from "../utils/subjectIcons";
 import ConfirmModal from "../components/common/ConfirmModal";
+import DescriptionPreview from "../components/common/DescriptionPreview";
 
 const API_ORIGIN = "http://localhost:5000";
 
@@ -42,7 +43,7 @@ const initialEditForm = {
     status: "Active",
 };
 
-const PAGE_SIZE = 5;
+const PAGE_SIZE = 3;
 
 const EMPTY_BANK = () => ({ title: "", content: "" });
 
@@ -112,14 +113,6 @@ export default function LessonMaster() {
         }, {});
         setSavedBankCountMap(nextCountMap);
     }, [lessons]);
-
-    const getDescriptionPreview = (description) => {
-        const normalizedDescription = description?.trim() || "";
-        if (!normalizedDescription) return "-";
-        const words = normalizedDescription.split(/\s+/);
-        if (words.length <= 2) return normalizedDescription;
-        return `${words.slice(0, 2).join(" ")}...`;
-    };
 
     const validateForm = () => {
         const nextErrors = {};
@@ -567,7 +560,7 @@ export default function LessonMaster() {
                                 name="lesson_code"
                                 value={form.lesson_code}
                                 onChange={handleChange}
-                                placeholder="Example: ALG-L1"
+                                placeholder="Example: ALG101-L1"
                                 className="w-full rounded-xl border border-slate-300 px-4 py-3 uppercase outline-none transition focus:border-blue-500"
                             />
                             {errors.lesson_code && <p className="mt-2 text-sm text-red-600">{errors.lesson_code}</p>}
@@ -660,9 +653,10 @@ export default function LessonMaster() {
                                             <td className="px-4 py-3">{lesson.lesson_title}</td>
                                             <td className="px-4 py-3">{lesson.lesson_code}</td>
                                             <td className="px-4 py-3">
-                                                <span className="block max-w-[140px] truncate" title={lesson.description}>
-                                                    {getDescriptionPreview(lesson.description)}
-                                                </span>
+                                                <DescriptionPreview
+                                                    text={lesson.description}
+                                                    className="block max-w-[140px]"
+                                                />
                                             </td>
                                             <td className="px-4 py-3">
                                                 <div className="inline-flex items-center gap-2">

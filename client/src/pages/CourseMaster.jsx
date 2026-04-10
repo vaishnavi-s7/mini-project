@@ -10,6 +10,7 @@ import {
 import { getSubjects } from "../services/subjectService";
 import { getLocalSubjectIcon } from "../utils/subjectIcons";
 import ConfirmModal from "../components/common/ConfirmModal";
+import DescriptionPreview from "../components/common/DescriptionPreview";
  
 const initialForm = {
   course_name: "",
@@ -26,7 +27,7 @@ const initialEditForm = {
   status: "Active",
 };
  
-const PAGE_SIZE = 5;
+const PAGE_SIZE = 3;
 const API_ORIGIN = "http://localhost:5000";
  
 const getSubjectIconUrl = (iconPath) =>
@@ -622,12 +623,10 @@ export default function CourseMaster() {
                     <td className="px-4 py-3">{course.course_name}</td>
                     <td className="px-4 py-3">{course.course_code}</td>
                     <td className="px-4 py-3">
-                      <span
-                        className="block max-w-[420px] truncate"
-                        title={course.description}
-                      >
-                        {course.description}
-                      </span>
+                      <DescriptionPreview
+                        text={course.description}
+                        className="block max-w-[420px]"
+                      />
                     </td>
                     <td className="px-4 py-3">
                       <div className="inline-flex items-center gap-2">

@@ -91,6 +91,8 @@ const NodeCard = ({ title, code, status, isSelected, onClick, iconElement, descr
  
 const normalize = (value) => String(value || "").toLowerCase();
 const TABLE_LESSON_ROW_HEIGHT = 44;
+const HIERARCHY_VIEW_HEIGHT = "calc(100vh - 140px)";
+const HIERARCHY_LIST_MAX_HEIGHT = "28rem";
  
 export default function MasterDashboardContent() {
   const navigate = useNavigate();
@@ -350,51 +352,55 @@ export default function MasterDashboardContent() {
   };
  
   return (
-    <div className="min-h-screen font-sans">
-      <header className="sticky top-0 z-30 flex h-16 items-center justify-between border-b bg-white px-6">
-        <div className="relative w-full max-w-md">
-          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-          <input
-            type="text"
-            placeholder="Search everything..."
-            className="w-full rounded-full border border-slate-200 bg-slate-50 py-2 pl-10 pr-4 text-sm transition-all focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
-            value={searchQuery}
-            onChange={(event) => setSearchQuery(event.target.value)}
-          />
-        </div>
+    <div className="min-h-screen bg-gray-100 font-sans">
+      <main className="flex min-h-screen flex-col px-4 pb-8 pt-6 sm:px-6 lg:px-8">
+        <div className="mb-5 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+          <div className="relative w-full max-w-md">
+            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+            <input
+              type="text"
+              placeholder="Search everything..."
+              className="w-full rounded-full border border-slate-200 bg-white py-2.5 pl-10 pr-4 text-sm transition-all focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+              value={searchQuery}
+              onChange={(event) => setSearchQuery(event.target.value)}
+            />
+          </div>
  
-        <div className="ml-4 flex shrink-0 items-center gap-4">
-          <div className="flex rounded-lg border border-slate-200 bg-slate-100 p-1">
-            <button
-              onClick={() => setViewMode("hierarchy")}
-              className={`flex items-center gap-2 rounded-md px-3 py-1.5 text-xs font-medium transition-all ${
-                viewMode === "hierarchy" ? "bg-white text-blue-600 shadow-sm" : "text-slate-500 hover:text-slate-700"
-              }`}
-            >
-              <LayoutDashboard className="h-3.5 w-3.5" />
-              Hierarchy
-            </button>
-            <button
-              onClick={() => setViewMode("table")}
-              className={`flex items-center gap-2 rounded-md px-3 py-1.5 text-xs font-medium transition-all ${
-                viewMode === "table" ? "bg-white text-blue-600 shadow-sm" : "text-slate-500 hover:text-slate-700"
-              }`}
-            >
-              <List className="h-3.5 w-3.5" />
-              Master Table
-            </button>
+          <div className="flex shrink-0 items-center gap-4">
+            <div className="flex rounded-lg border border-slate-200 bg-slate-100 p-1">
+              <button
+                onClick={() => setViewMode("hierarchy")}
+                className={`flex items-center gap-2 rounded-md px-3 py-1.5 text-xs font-medium transition-all ${
+                  viewMode === "hierarchy" ? "bg-white text-blue-600 shadow-sm" : "text-slate-500 hover:text-slate-700"
+                }`}
+              >
+                <LayoutDashboard className="h-3.5 w-3.5" />
+                Hierarchy
+              </button>
+              <button
+                onClick={() => setViewMode("table")}
+                className={`flex items-center gap-2 rounded-md px-3 py-1.5 text-xs font-medium transition-all ${
+                  viewMode === "table" ? "bg-white text-blue-600 shadow-sm" : "text-slate-500 hover:text-slate-700"
+                }`}
+              >
+                <List className="h-3.5 w-3.5" />
+                Master Table
+              </button>
+            </div>
           </div>
         </div>
-      </header>
  
-      <main className="flex min-h-[calc(100vh-64px)] overflow-hidden">
-        {isLoading ? (
+        <div className="flex min-h-[calc(100vh-140px)] overflow-hidden">
+          {isLoading ? (
           <div className="flex flex-1 items-center justify-center bg-slate-50">
             <p className="text-sm text-slate-500">Loading master data...</p>
           </div>
         ) : viewMode === "hierarchy" ? (
-          <div className="flex flex-1 overflow-x-auto bg-slate-50/50">
-            <div className="flex w-80 flex-col border-r bg-white/50 backdrop-blur-sm">
+          <div className="flex flex-1 overflow-hidden bg-slate-50/50">
+            <div
+              className="flex w-80 flex-col border-r bg-white/50 backdrop-blur-sm"
+              style={{ height: HIERARCHY_VIEW_HEIGHT }}
+            >
               <div className="flex items-center justify-between border-b bg-white p-4">
                 <div className="flex items-center gap-2">
                   <BookOpen className="h-4 w-4 text-blue-600" />
@@ -404,7 +410,10 @@ export default function MasterDashboardContent() {
                   {filteredSubjects.length}
                 </span>
               </div>
-              <div className="flex-1 space-y-3 overflow-y-auto p-4">
+              <div
+                className="flex-1 space-y-3 overflow-y-auto p-4"
+                style={{ maxHeight: HIERARCHY_LIST_MAX_HEIGHT }}
+              >
                 {filteredSubjects.map((subject) => (
                   <NodeCard
                     key={subject._id}
@@ -424,7 +433,10 @@ export default function MasterDashboardContent() {
               </div>
             </div>
  
-            <div className="flex w-80 flex-col border-r bg-white/30 backdrop-blur-sm">
+            <div
+              className="flex w-80 flex-col border-r bg-white/30 backdrop-blur-sm"
+              style={{ height: HIERARCHY_VIEW_HEIGHT }}
+            >
               <div className="flex items-center justify-between border-b bg-white/80 p-4">
                 <div className="flex items-center gap-2">
                   <Layers className="h-4 w-4 text-indigo-600" />
@@ -436,7 +448,10 @@ export default function MasterDashboardContent() {
                   </span>
                 )}
               </div>
-              <div className="flex-1 space-y-3 overflow-y-auto p-4">
+              <div
+                className="flex-1 space-y-3 overflow-y-auto p-4"
+                style={{ maxHeight: HIERARCHY_LIST_MAX_HEIGHT }}
+              >
                 {selectedSubject ? (
                   subjectCourses.map((course) => (
                     <NodeCard
@@ -459,7 +474,10 @@ export default function MasterDashboardContent() {
               </div>
             </div>
  
-            <div className="flex flex-1 flex-col bg-slate-50/30">
+            <div
+              className="flex flex-1 flex-col bg-slate-50/30"
+              style={{ height: HIERARCHY_VIEW_HEIGHT }}
+            >
               <div className="flex items-center justify-between border-b bg-white/50 p-4">
                 <div className="flex items-center gap-2">
                   <BookText className="h-4 w-4 text-emerald-600" />
@@ -472,7 +490,7 @@ export default function MasterDashboardContent() {
                 )}
               </div>
  
-              <div className="flex-1 overflow-y-auto p-6">
+              <div className="flex-1 overflow-y-auto p-6" style={{ maxHeight: HIERARCHY_VIEW_HEIGHT }}>
                 {selectedCourse ? (
                   <div className="grid grid-cols-1 gap-4 lg:grid-cols-2 xl:grid-cols-3">
                     {courseLessons.map((lesson) => (
@@ -660,6 +678,7 @@ export default function MasterDashboardContent() {
             </div>
           </div>
         )}
+        </div>
       </main>
     </div>
   );
