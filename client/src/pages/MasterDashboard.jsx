@@ -365,7 +365,7 @@ export default function MasterDashboardContent() {
               onChange={(event) => setSearchQuery(event.target.value)}
             />
           </div>
- 
+
           <div className="flex shrink-0 items-center gap-4">
             <div className="flex rounded-lg border border-slate-200 bg-slate-100 p-1">
               <button
@@ -396,9 +396,9 @@ export default function MasterDashboardContent() {
             <p className="text-sm text-slate-500">Loading master data...</p>
           </div>
         ) : viewMode === "hierarchy" ? (
-          <div className="flex flex-1 overflow-hidden bg-slate-50/50">
+          <div className="flex flex-1 overflow-hidden rounded-3xl border border-slate-200 bg-white/50 shadow-xl shadow-slate-200/50 backdrop-blur-sm">
             <div
-              className="flex w-80 flex-col border-r bg-white/50 backdrop-blur-sm"
+              className="flex w-80 flex-col border-r border-slate-200 bg-white/50 backdrop-blur-sm"
               style={{ height: HIERARCHY_VIEW_HEIGHT }}
             >
               <div className="flex items-center justify-between border-b bg-white p-4">
@@ -434,7 +434,7 @@ export default function MasterDashboardContent() {
             </div>
  
             <div
-              className="flex w-80 flex-col border-r bg-white/30 backdrop-blur-sm"
+              className="flex w-80 flex-col border-r border-slate-200 bg-white/30 backdrop-blur-sm"
               style={{ height: HIERARCHY_VIEW_HEIGHT }}
             >
               <div className="flex items-center justify-between border-b bg-white/80 p-4">
@@ -492,31 +492,28 @@ export default function MasterDashboardContent() {
  
               <div className="flex-1 overflow-y-auto p-6" style={{ maxHeight: HIERARCHY_VIEW_HEIGHT }}>
                 {selectedCourse ? (
-                  <div className="grid grid-cols-1 gap-4 lg:grid-cols-2 xl:grid-cols-3">
+                  <div className="grid grid-cols-1 gap-4 auto-rows-fr">
                     {courseLessons.map((lesson) => (
                       <div
                         key={lesson._id}
-                        className="group rounded-2xl border border-slate-200 bg-white p-5 shadow-sm transition-all hover:shadow-md"
+                        className="flex h-full min-h-[110px] flex-col justify-between rounded-2xl border border-slate-200 bg-white p-4 shadow-sm transition-all hover:shadow-md"
                       >
-                        <div className="mb-4 flex items-start justify-between">
-                          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-50 text-emerald-600 transition-colors group-hover:bg-emerald-600 group-hover:text-white">
-                            <BookText className="h-5 w-5" />
-                          </div>
+                        <div className="flex items-start justify-between gap-3">
+                          <h4
+                            className="min-w-0 flex-1 whitespace-normal break-words text-sm font-bold leading-snug text-slate-900"
+                            title={lesson.lesson_title}
+                          >
+                            {lesson.lesson_title}
+                          </h4>
                           <StatusBadge status={lesson.status || "Inactive"} />
                         </div>
- 
-                        <h4 className="mb-1 text-slate-900 font-bold">{lesson.lesson_title}</h4>
-                        <p className="mb-3 text-[10px] font-mono uppercase tracking-widest text-slate-400">{lesson.lesson_code}</p>
-                        <p className="mb-4 text-xs leading-relaxed text-slate-500">{lesson.description || "No description"}</p>
- 
-                        <div className="flex items-center justify-between border-t pt-4">
+
+                        <div className="pt-3">
                           <button
                             className="flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider text-blue-600 hover:text-blue-700"
                             onClick={() => openLessonDetails(lesson._id)}
                           >
                             View Details <ChevronRight className="h-3 w-3" />
-                          </button>
-                          <button className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-600">
                           </button>
                         </div>
                       </div>
@@ -532,20 +529,15 @@ export default function MasterDashboardContent() {
             </div>
           </div>
         ) : (
-          <div className="flex-1 overflow-auto bg-slate-50 p-8">
-            <div className="mx-auto max-w-7xl">
-              <div className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-xl shadow-slate-200/50">
-                <div className="sticky top-0 z-10 flex items-center justify-between border-b bg-white p-6">
+          <div className="flex flex-1 overflow-hidden bg-slate-50/50">
+            <div className="flex flex-1 flex-col overflow-hidden rounded-3xl border border-slate-200 bg-white/50 shadow-xl shadow-slate-200/50 backdrop-blur-sm">
+              <div className="sticky top-0 z-10 flex items-center justify-between border-b bg-white/90 p-4">
                   <div>
-                    <h2 className="text-xl font-bold text-slate-900">All Master Data</h2>
+                    <h2 className="text-sm font-bold uppercase tracking-wider text-slate-900">All Master Data</h2>
                   </div>
-                  <div className="flex items-center gap-3">
-                    <button className="flex items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-4 py-2 text-xs font-semibold text-slate-700 transition-colors hover:bg-slate-100">
-                    </button>
-                  </div>
-                </div>
+              </div>
  
-                <div className="overflow-x-auto">
+              <div className="flex-1 overflow-auto">
                   <table className="w-full border-collapse text-left">
                     <thead>
                       <tr className="bg-slate-50/50">
@@ -650,7 +642,7 @@ export default function MasterDashboardContent() {
                                           key={lesson._id}
                                           type="button"
                                           onClick={() => openLessonDetails(lesson._id)}
-                                          className="flex h-[44px] w-6 items-start justify-center rounded-md border border-transparent pt-0.5 text-slate-500 transition hover:border-blue-200 hover:bg-blue-50 hover:text-blue-600"
+                                          className="flex h-6 w-6 items-center justify-center rounded-full border border-transparent text-slate-500 transition hover:bg-blue-50/60 hover:text-blue-600"
                                           title={`Open ${lesson.lesson_title}`}
                                           aria-label={`Open ${lesson.lesson_title}`}
                                         >
@@ -673,7 +665,6 @@ export default function MasterDashboardContent() {
                       ))}
                     </tbody>
                   </table>
-                </div>
               </div>
             </div>
           </div>
@@ -683,8 +674,3 @@ export default function MasterDashboardContent() {
     </div>
   );
 }
- 
- 
- 
- 
- 
