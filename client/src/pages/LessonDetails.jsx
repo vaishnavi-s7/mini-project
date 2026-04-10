@@ -1,4 +1,4 @@
-import { Plus, Save, Trash2 } from "lucide-react";
+import { Edit3, Plus, Save, Trash2 } from "lucide-react";
 import { useEffect, useState } from "react";
 import toast from "react-hot-toast";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
@@ -220,7 +220,16 @@ export default function LessonDetails() {
                     key={item.local_id}
                     className="rounded-3xl border border-slate-200 bg-slate-50 p-5 shadow-sm transition hover:shadow-md"
                   >
-                    <div className="mb-3 flex justify-end">
+                    <div className="mb-3 flex justify-end gap-1.5">
+                      <button
+                        type="button"
+                        onClick={() => setEditingIndex(index)}
+                        className="rounded-lg p-2 text-slate-400 transition hover:bg-blue-50 hover:text-blue-600"
+                        title="Edit question block"
+                        aria-label={`Edit question block ${index + 1}`}
+                      >
+                        <Edit3 size={16} />
+                      </button>
                       <button
                         type="button"
                         onClick={() => handleDeleteQuestionBank(index)}
@@ -261,18 +270,14 @@ export default function LessonDetails() {
                         </button>
                       </div>
                     ) : (
-                      <button
-                        type="button"
-                        onClick={() => setEditingIndex(index)}
-                        className="block w-full text-left"
-                      >
+                      <div className="block w-full text-left">
                         <p className="text-lg font-semibold text-slate-900">
                           {item.title || `Question Bank ${index + 1}`}
                         </p>
                         <p className="mt-3 whitespace-pre-wrap text-sm leading-6 text-slate-600">
                           {item.content || "Click to add question bank content"}
                         </p>
-                      </button>
+                      </div>
                     )}
                   </div>
                 );

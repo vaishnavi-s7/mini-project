@@ -353,7 +353,7 @@ export default function MasterDashboardContent() {
  
   return (
     <div className="min-h-screen bg-gray-100 font-sans">
-      <main className="flex min-h-screen flex-col px-4 pb-8 pt-6 sm:px-6 lg:px-8">
+      <main className="flex min-h-screen flex-col px-4 pb-8 pt-4 sm:px-6 lg:px-8">
         <div className="mb-5 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
           <div className="relative w-full max-w-md">
             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
@@ -390,7 +390,7 @@ export default function MasterDashboardContent() {
           </div>
         </div>
  
-        <div className="flex min-h-[calc(100vh-140px)] overflow-hidden">
+        <div className="mt-4 flex min-h-[calc(100vh-140px)] overflow-hidden">
           {isLoading ? (
           <div className="flex flex-1 items-center justify-center bg-slate-50">
             <p className="text-sm text-slate-500">Loading master data...</p>

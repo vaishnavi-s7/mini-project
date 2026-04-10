@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 
-import { ChevronLeft, ChevronRight, Pencil, Plus, Trash2, X } from "lucide-react";
+import { ChevronLeft, ChevronRight, Edit3, Pencil, Plus, Trash2, X } from "lucide-react";
 
 import toast from "react-hot-toast";
 
@@ -72,6 +72,7 @@ export default function LessonMaster() {
     // ── Question Bank state ──────────────────────────────────────────────────
     const [questionModalLesson, setQuestionModalLesson] = useState(null);
     const [questionBanks, setQuestionBanks] = useState([EMPTY_BANK()]);
+    const [editingBankIndex, setEditingBankIndex] = useState(null);
     const [savedBankCountMap, setSavedBankCountMap] = useState({}); // { lessonId: number }
     // ────────────────────────────────────────────────────────────────────────
 
@@ -395,11 +396,13 @@ export default function LessonMaster() {
                 }))
                 : [EMPTY_BANK()]
         );
+        setEditingBankIndex(null);
     };
 
     const closeQuestionModal = () => {
         setQuestionModalLesson(null);
         setQuestionBanks([EMPTY_BANK()]);
+        setEditingBankIndex(null);
     };
 
     const handleAddBank = () => {
@@ -412,7 +415,11 @@ export default function LessonMaster() {
             return;
         }
 
-        setQuestionBanks((prev) => [...prev, EMPTY_BANK()]);
+        setQuestionBanks((prev) => {
+            const nextIndex = prev.length;
+            setEditingBankIndex(nextIndex);
+            return [...prev, EMPTY_BANK()];
+        });
     };
 
     const canAddBank = questionBanks.every(
@@ -429,6 +436,11 @@ export default function LessonMaster() {
         setQuestionBanks((prev) => {
             const updated = prev.filter((_, i) => i !== index);
             return updated.length ? updated : [EMPTY_BANK()];
+        });
+        setEditingBankIndex((prev) => {
+            if (prev === null) return null;
+            if (prev === index) return null;
+            return prev > index ? prev - 1 : prev;
         });
     };
 
@@ -797,50 +809,81 @@ export default function LessonMaster() {
                                     className="space-y-3 rounded-2xl border border-slate-200 bg-slate-50 p-4"
                                 >
                                     {/* Card Header */}
-                                    <div className="flex items-center justify-between">
+                                    <div className="flex items-center justify-between gap-2">
                                         <div className="flex items-center gap-2">
                                             <span className="text-sm font-semibold text-slate-600">
                                                 Question Bank {index + 1}
                                             </span>
                                         </div>
-                                        {/* Trash — only visible when more than 1 card */}
-                                        {questionBanks.length > 1 && (
+                                        <div className="flex items-center gap-1.5">
                                             <button
                                                 type="button"
-                                                onClick={() => handleRemoveBank(index)}
-                                                className="flex h-6 w-6 items-center justify-center rounded-full border border-slate-200 text-slate-400 transition hover:border-red-200 hover:text-red-500"
-                                                title="Remove this bank"
+                                                onClick={() => setEditingBankIndex(index)}
+                                                className="rounded-lg p-2 text-slate-400 transition hover:bg-blue-50 hover:text-blue-600"
+                                                title="Edit question bank"
+                                                aria-label={`Edit question bank ${index + 1}`}
                                             >
-                                                <Trash2 size={12} strokeWidth={2} />
+                                                <Edit3 size={14} />
                                             </button>
-                                        )}
+                                            {questionBanks.length > 1 && (
+                                                <button
+                                                    type="button"
+                                                    onClick={() => handleRemoveBank(index)}
+                                                    className="flex h-6 w-6 items-center justify-center rounded-full border border-slate-200 text-slate-400 transition hover:border-red-200 hover:text-red-500"
+                                                    title="Remove this bank"
+                                                >
+                                                    <Trash2 size={12} strokeWidth={2} />
+                                                </button>
+                                            )}
+                                        </div>
                                     </div>
 
-                                    {/* Title Input */}
-                                    <div>
-                                        <input
-                                            type="text"
-                                            value={bank.title}
-                                            onChange={(e) =>
-                                                handleBankFieldChange(index, "title", e.target.value)
-                                            }
-                                            placeholder="Question bank title"
-                                            className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm outline-none transition focus:border-blue-500"
-                                        />
-                                    </div>
+                                    {editingBankIndex === index ? (
+                                        <>
+                                            {/* Title Input */}
+                                            <div>
+                                                <input
+                                                    type="text"
+                                                    value={bank.title}
+                                                    onChange={(e) =>
+                                                        handleBankFieldChange(index, "title", e.target.value)
+                                                    }
+                                                    placeholder="Question bank title"
+                                                    className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm outline-none transition focus:border-blue-500"
+                                                />
+                                            </div>
 
-                                    {/* Content Textarea */}
-                                    <div>
-                                        <textarea
-                                            value={bank.content}
-                                            onChange={(e) =>
-                                                handleBankFieldChange(index, "content", e.target.value)
-                                            }
-                                            rows={4}
-                                            placeholder="Enter question bank Content"
-                                            className="w-full resize-y rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm outline-none transition focus:border-blue-500"
-                                        />
-                                    </div>
+                                            {/* Content Textarea */}
+                                            <div>
+                                                <textarea
+                                                    value={bank.content}
+                                                    onChange={(e) =>
+                                                        handleBankFieldChange(index, "content", e.target.value)
+                                                    }
+                                                    rows={4}
+                                                    placeholder="Enter question bank Content"
+                                                    className="w-full resize-y rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm outline-none transition focus:border-blue-500"
+                                                />
+                                            </div>
+
+                                            <button
+                                                type="button"
+                                                onClick={() => setEditingBankIndex(null)}
+                                                className="text-sm font-semibold text-blue-600 transition hover:text-blue-700"
+                                            >
+                                                Done editing
+                                            </button>
+                                        </>
+                                    ) : (
+                                        <div className="space-y-3">
+                                            <div className="rounded-xl bg-white px-3 py-2 text-sm font-semibold text-slate-900">
+                                                {bank.title || `Question Bank ${index + 1}`}
+                                            </div>
+                                            <div className="min-h-[96px] rounded-xl bg-white px-3 py-2 text-sm leading-6 text-slate-600">
+                                                {bank.content || "Click the edit icon to add question bank content"}
+                                            </div>
+                                        </div>
+                                    )}
                                 </div>
                             ))}
                         </div>

@@ -19,6 +19,7 @@ export default function Navbar() {
     { to: "/subject-master", label: "Subjects" },
     { to: "/course-master", label: "Courses" },
     { to: "/lesson-master", label: "Lessons" },
+    { to: "/question-bank", label: "Question Bank" },
     { to: "/master-dashboard", label: "Dashboard" },
   ];
 

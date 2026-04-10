@@ -7,6 +7,7 @@ import CourseMaster from "../pages/CourseMaster";
 import LessonMaster from "../pages/LessonMaster";
 import LessonDetails from "../pages/LessonDetails";
 import MasterDashboard from "../pages/MasterDashboard";
+import QuestionBank from "../pages/QuestionBank";
  
 import Login from "../pages/Login";
 import Register from "../pages/Register";
@@ -78,6 +79,15 @@ export default function AppRoutes() {
         element={
           <ProtectedWrapper>
             <MasterDashboard />
+          </ProtectedWrapper>
+        }
+      />
+
+      <Route
+        path="/question-bank"
+        element={
+          <ProtectedWrapper>
+            <QuestionBank />
           </ProtectedWrapper>
         }
       />
