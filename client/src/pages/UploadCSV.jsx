@@ -4,6 +4,51 @@ import Papa from "papaparse";
 import ProtectedWrapper from "../components/common/ProtectedWrapper";
 import { toast } from "react-toastify";
 
+const CSV_CONFIGS = {
+  student: {
+    headers: ["name", "email", "grade", "section"],
+    sample: "John Doe,john@example.com,5,A",
+    requirements: [
+      ["name", "must be a valid string"],
+      ["email", "must be a valid email address"],
+      ["grade", "must be a number between 1 and 10"],
+      ["section", "must be one of A, B, C, or D"],
+    ],
+  },
+  subject: {
+    headers: ["subject_name", "subject_code", "description"],
+    sample: "Math,MATH,Basic subject",
+    requirements: [
+      ["subject_name", "is required"],
+      ["subject_code", "is required"],
+      ["description", "is optional"],
+    ],
+  },
+  course: {
+    headers: ["subjectcode", "name", "code", "description"],
+    sample: "MATH,Algebra,ALG101,Basics",
+    requirements: [
+      ["subjectcode", "must match an existing subject code"],
+      ["name", "is required"],
+      ["code", "is required"],
+      ["description", "is optional"],
+    ],
+  },
+  lesson: {
+    headers: ["coursecode", "title", "code", "description"],
+    sample: "ALG101,Linear Eq,ALG-L1,Basics",
+    requirements: [
+      ["coursecode", "must match an existing course code"],
+      ["title", "is required"],
+      ["code", "is required"],
+      ["description", "is optional"],
+    ],
+  },
+};
+
+/**
+ * Render the CSV upload workflow.
+ */
 export default function UploadCSV() {
 
   const [file, setFile] = useState(null);
@@ -11,6 +56,32 @@ export default function UploadCSV() {
   const fileInputRef = useRef(null);
   const [result, setResult] = useState(null);
   const [showModal, setShowModal] = useState(false);
+  const [type, setType] = useState("student");
+
+  const activeConfig = CSV_CONFIGS[type];
+
+  const resetFileInput = () => {
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
+    }
+  };
+
+  const clearSelection = () => {
+    setFile(null);
+    setPreviewData([]);
+    setResult(null);
+    setShowModal(false);
+    resetFileInput();
+  };
+
+  const validateHeaders = (headers) => {
+    const normalized = headers.map((header) => header.trim().toLowerCase());
+
+    return (
+      normalized.length === activeConfig.headers.length &&
+      JSON.stringify(normalized) === JSON.stringify(activeConfig.headers)
+    );
+  };
 
   /* handle file selection */
   const handleFileChange = (e) => {
@@ -21,32 +92,21 @@ export default function UploadCSV() {
     const reader = new FileReader();
 
     reader.onload = (event) => {
-      const text = event.target.result;
+      const text = event.target.result || "";
+      const firstLine = text.split(/\r?\n/)[0].trim();
+      const headers = firstLine.split(",");
 
-      const firstLine = text.split("\n")[0].trim();
-
-      const headers = firstLine.split(",").map(h =>
-        h.trim().toLowerCase()
-      );
-
-      const expected = ["name", "email", "grade", "section"];
-
-      const isValid =
-        JSON.stringify(headers) === JSON.stringify(expected);
-
-      if (!isValid) {
-        toast.error("Fields not matching. Check the columns and reupload.");
-
-        if (fileInputRef.current) {
-          fileInputRef.current.value = "";
-        }
-
-        setFile(null);
+      // Validate the uploaded file against the active CSV template.
+      if (!validateHeaders(headers)) {
+        toast.error(`Fields not matching for ${type}. Check the columns and reupload.`);
+        clearSelection();
         return;
       }
 
-      // valid file
       setFile(selectedFile);
+      setPreviewData([]);
+      setResult(null);
+      setShowModal(false);
     };
 
     reader.readAsText(selectedFile);
@@ -61,6 +121,7 @@ export default function UploadCSV() {
 
     const formData = new FormData();
     formData.append("file", file);
+    formData.append("type", type);
 
     try {
 
@@ -69,14 +130,11 @@ export default function UploadCSV() {
       setResult(res.data);
       setShowModal(true);
 
-      //Reset state
+      toast.success(`${res.data.inserted} ${type}(s) uploaded successfully`);
+
       setFile(null);
       setPreviewData([]);
-
-      //RESET FILE INPUT UI 
-      if (fileInputRef.current) {
-        fileInputRef.current.value = "";
-      }
+      resetFileInput();
 
     } catch (error) {
 
@@ -140,18 +198,19 @@ export default function UploadCSV() {
   };
   // DOWNLOAD SAMPLE TEMPLATE
   const downloadTemplate = () => {
-    const headers = ["name", "email", "grade", "section"];
+    const headers = activeConfig.headers;
+    const sample = activeConfig.sample;
 
     const csvContent =
       "data:text/csv;charset=utf-8," +
       headers.join(",") + "\n" +
-      "John Doe,john@example.com,5,A";
+      sample;
 
     const encodedUri = encodeURI(csvContent);
     const link = document.createElement("a");
 
     link.setAttribute("href", encodedUri);
-    link.setAttribute("download", "sample_template.csv");
+    link.setAttribute("download", `${type}_template.csv`);
     document.body.appendChild(link);
 
     link.click();
@@ -166,8 +225,27 @@ export default function UploadCSV() {
             Upload CSV File
           </h2>
 
+          <div className="flex justify-center gap-2 mb-4 flex-wrap">
+            {Object.keys(CSV_CONFIGS).map((csvType) => (
+              <button
+                key={csvType}
+                onClick={() => {
+                  setType(csvType);
+                  clearSelection();
+                }}
+                className={`px-3 py-1 rounded-full text-sm capitalize transition ${
+                  type === csvType
+                    ? "bg-blue-600 text-white"
+                    : "bg-gray-200 text-gray-600 hover:bg-gray-300"
+                }`}
+              >
+                {csvType}
+              </button>
+            ))}
+          </div>
+
           <p className="text-center text-gray-500 mb-6">
-            Upload a CSV file to preview and store student data
+            {activeConfig.description}
           </p>
 
           {/* Upload Box */}
@@ -208,7 +286,7 @@ export default function UploadCSV() {
             </button>
           </div>
           <p className="text-xs text-gray-500 mt-2 text-center">
-            Disclaimer : Do not modify the header row. Only fill data from row 2 onwards.
+            Disclaimer: do not modify the header row. Only fill data from row 2 onwards.
           </p>
           {/* Buttons */}
           <div className="flex justify-center gap-4 mt-6">
@@ -227,13 +305,28 @@ export default function UploadCSV() {
               Preview
             </button>
           </div>
-          <div className="mt-6 bg-gray-50 border rounded-lg p-4 text-sm text-gray-700">
+          <div className="hidden mt-6 bg-gray-50 border rounded-lg p-4 text-sm text-gray-700">
             <h3 className="font-semibold text-lg mb-2">Requirements</h3>
             <ul className="list-disc list-inside space-y-1">
               <li><strong>name</strong> → must be a valid string</li>
               <li><strong>email</strong> → must contain "@", ".", and end with ".com"</li>
               <li><strong>grade</strong> → must be a number between 1 and 10</li>
               <li><strong>section</strong> → must be one of: A, B, C, D</li>
+            </ul>
+          </div>
+          <div className="mt-6 bg-gray-50 border rounded-lg p-4 text-sm text-gray-700">
+            <h3 className="font-semibold text-lg mb-1 capitalize">
+              {type} Requirements
+            </h3>
+            <p className="text-xs text-gray-500 mb-3">
+              {activeConfig.description}
+            </p>
+            <ul className="list-disc list-inside space-y-1">
+              {activeConfig.requirements.map(([field, requirement]) => (
+                <li key={field}>
+                  <strong>{field}</strong> - {requirement}
+                </li>
+              ))}
             </ul>
           </div>
           {/* Preview Table */}
@@ -250,28 +343,52 @@ export default function UploadCSV() {
                 <table className="w-full border rounded-lg overflow-hidden min-w-[600px]">
                   <thead className="bg-gray-200 text-sm">
                     <tr>
-                      <th className="p-3 text-left">Name</th>
-                      <th className="p-3 text-left">Email</th>
-                      <th className="p-3 text-left">Grade</th>
-                      <th className="p-3 text-left">Section</th>
+                      {Object.keys(previewData[0]).map((key) => (
+                        <th key={key} className="p-3 text-left capitalize">
+                          {key}
+                        </th>
+                      ))}
                     </tr>
                   </thead>
 
                   <tbody>
                     {previewData.map((row, index) => (
                       <tr key={index} className="border-t hover:bg-gray-50 text-sm">
-                        <td className="p-3">{row.name}</td>
-                        <td className="p-3 break-all">{row.email}</td>
-                        <td className="p-3">{row.grade}</td>
-                        <td className="p-3">{row.section}</td>
+                        {Object.values(row).map((value, cellIndex) => (
+                          <td key={cellIndex} className="p-3 break-all">
+                            {value}
+                          </td>
+                        ))}
                       </tr>
                     ))}
                   </tbody>
                 </table>
               </div>
 
-              {/* MOBILE VIEW */}
               <div className="md:hidden space-y-3">
+                {previewData.map((row, index) => (
+                  <div
+                    key={index}
+                    className="border rounded-lg p-3 shadow-sm bg-white"
+                  >
+                    <p className="font-semibold text-gray-800">
+                      {Object.values(row)[0] || "—"}
+                    </p>
+
+                    <p className="text-sm text-gray-500 break-all">
+                      {Object.values(row)[1] || "—"}
+                    </p>
+
+                    <div className="flex justify-between mt-2 text-sm">
+                      <span>Fields: {Object.keys(row).length}</span>
+                      <span>Type: {type}</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              {/* MOBILE VIEW */}
+              <div className="hidden md:hidden space-y-3">
                 {previewData.map((row, index) => (
                   <div
                     key={index}

@@ -1,5 +1,8 @@
 import nodemailer from "nodemailer";
 
+/**
+ * Send a password reset OTP email to the user.
+ */
 export const sendOTPEmail = async (email, otp) => {
   try {
     const transporter = nodemailer.createTransport({
@@ -57,6 +60,10 @@ export const sendOTPEmail = async (email, otp) => {
     throw error;
   }
 };
+
+/**
+ * Send a welcome email after successful account creation.
+ */
 export const sendWelcomeEmail = async (email, name) => {
   try {
     const transporter = nodemailer.createTransport({

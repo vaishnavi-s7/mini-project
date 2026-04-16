@@ -3,6 +3,9 @@ const subjectIconModules = import.meta.glob("../assets/*.{png,jpg,jpeg,svg}", {
   import: "default",
 });
 
+/**
+ * Build a lookup map from local asset file names to imported icon URLs.
+ */
 const SUBJECT_ICON_MAP = Object.fromEntries(
   Object.entries(subjectIconModules).map(([path, icon]) => {
     const fileName = path.split("/").pop() || "";
@@ -15,6 +18,10 @@ const SUBJECT_ICON_MAP = Object.fromEntries(
 const normalizeValue = (value) =>
   value?.trim().toLowerCase().replace(/[_-]+/g, " ") || "";
 
+/**
+ * Resolve the best matching local icon for a subject.
+ * Falls back to an empty string when there is no match.
+ */
 export const getLocalSubjectIcon = (subject) => {
   const name = normalizeValue(subject?.subject_name);
   const code = normalizeValue(subject?.subject_code);

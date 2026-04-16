@@ -1,3 +1,6 @@
+/**
+ * Validate a password against the app's password policy.
+ */
 export const validatePassword = (password) => {
   const rules = {
     length: password.length >= 6 && password.length <= 24,

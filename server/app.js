@@ -9,6 +9,9 @@ import lessonRoutes from "./routes/lessonRoutes.js"; // ✅ ADD THIS
 
 const app = express();
 
+/**
+ * Register global middleware and API routes.
+ */
 app.use(cors());
 app.use(express.json());
 

@@ -1,16 +1,22 @@
 import API from "./api";
-
-/* create student */
+ 
+/**
+ * Create a student record through the API.
+ */
 export const createData = (data) => {
   return API.post("/students", data);
 };
-
-/* get all students */
+ 
+/**
+ * Fetch all student records.
+ */
 export const getAllData = () => {
   return API.get("/students");
 };
-
-/* upload csv */
+ 
+/**
+ * Upload a CSV file for bulk student import.
+ */
 export const uploadCSV = (formData) => {
   return API.post("/students/upload", formData, {
     headers: {

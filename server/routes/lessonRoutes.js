@@ -11,6 +11,9 @@ import { protect } from "../middleware/authMiddleware.js";
  
 const router = express.Router();
  
+/**
+ * Read, create, update, and delete lesson records.
+ */
 router.get("/", protect, getLessons);
 router.get("/:id", protect, getLessonById);
 router.post("/", protect, createLesson);

@@ -26,6 +26,9 @@ const initialEditForm = {
  
 const PAGE_SIZE = 3;
  
+/**
+ * Render the subject management screen.
+ */
 export default function SubjectMaster() {
   const [form, setForm] = useState(initialForm);
   const [errors, setErrors] = useState({});

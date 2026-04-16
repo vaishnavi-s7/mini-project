@@ -2,9 +2,15 @@ import Lesson from "../models/Lesson.js";
 import Course from "../models/Course.js";
 import { resequenceDocuments } from "../utils/resequenceDocuments.js";
 
+/**
+ * Build the public lesson identifier from a sequence number.
+ */
 const buildLessonId = (sequenceNumber) =>
   `LES${String(sequenceNumber).padStart(3, "0")}`;
 
+/**
+ * Create a lesson under an existing course.
+ */
 export const createLesson = async (req, res) => {
   try {
     const {
@@ -17,6 +23,7 @@ export const createLesson = async (req, res) => {
       status,
     } = req.body;
 
+    // Require the core lesson fields before proceeding.
     if (!lesson_title?.trim() || !lesson_code?.trim() || !course || !lesson_order) {
       return res.status(400).json({
         message: "Lesson title, lesson code, course, and lesson order are required",
@@ -25,6 +32,7 @@ export const createLesson = async (req, res) => {
 
     const existingCourse = await Course.findById(course);
 
+    // Reject lessons that reference a missing course.
     if (!existingCourse) {
       return res.status(404).json({ message: "Selected course not found" });
     }
@@ -68,6 +76,9 @@ export const createLesson = async (req, res) => {
   }
 };
 
+/**
+ * Return every lesson in sequence order.
+ */
 export const getLessons = async (_req, res) => {
   try {
     await resequenceDocuments(Lesson, buildLessonId, "lesson_id");
@@ -92,6 +103,9 @@ export const getLessons = async (_req, res) => {
   }
 };
 
+/**
+ * Return a single lesson by id.
+ */
 export const getLessonById = async (req, res) => {
   try {
     const lesson = await Lesson.findById(req.params.id).populate({
@@ -103,6 +117,7 @@ export const getLessonById = async (req, res) => {
       },
     });
 
+    // Surface a clear 404 when the requested lesson does not exist.
     if (!lesson) {
       return res.status(404).json({ message: "Lesson not found" });
     }
@@ -116,6 +131,9 @@ export const getLessonById = async (req, res) => {
   }
 };
 
+/**
+ * Update a lesson and preserve its course relationship.
+ */
 export const updateLesson = async (req, res) => {
   try {
     const {
@@ -127,6 +145,7 @@ export const updateLesson = async (req, res) => {
       status,
     } = req.body;
 
+    // Require the minimum fields needed to keep the lesson valid.
     if (!lesson_title?.trim() || !course || !lesson_order) {
       return res.status(400).json({
         message: "Lesson title, course, and lesson order are required",
@@ -158,6 +177,7 @@ export const updateLesson = async (req, res) => {
       },
     });
 
+    // Return 404 when the lesson id cannot be found.
     if (!lesson) {
       return res.status(404).json({ message: "Lesson not found" });
     }
@@ -171,10 +191,14 @@ export const updateLesson = async (req, res) => {
   }
 };
 
+/**
+ * Replace the question bank for a lesson.
+ */
 export const updateLessonQuestionBank = async (req, res) => {
   try {
     const { question_bank } = req.body;
 
+    // The question bank must always be a list of entries.
     if (!Array.isArray(question_bank)) {
       return res.status(400).json({ message: "Question bank must be an array" });
     }
@@ -197,6 +221,7 @@ export const updateLessonQuestionBank = async (req, res) => {
       },
     });
 
+    // Return 404 when the lesson id cannot be found.
     if (!lesson) {
       return res.status(404).json({ message: "Lesson not found" });
     }
@@ -210,11 +235,15 @@ export const updateLessonQuestionBank = async (req, res) => {
   }
 };
 
+/**
+ * Delete a lesson and resequence the remaining records.
+ */
 export const deleteLesson = async (req, res) => {
   try {
     const { id } = req.params;
     const lesson = await Lesson.findById(id);
 
+    // Do not continue when the lesson does not exist.
     if (!lesson) {
       return res.status(404).json({ message: "Lesson not found" });
     }

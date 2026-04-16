@@ -1,3 +1,6 @@
+/**
+ * Normalize sequence numbers and public ids for ordered documents.
+ */
 export const resequenceDocuments = async (Model, buildId, idField) => {
   const documents = await Model.find().sort({ sequence_number: 1, _id: 1 });
 
@@ -7,6 +10,7 @@ export const resequenceDocuments = async (Model, buildId, idField) => {
     const expectedSequence = index + 1;
     const expectedId = buildId(expectedSequence);
 
+    // Detect the first out-of-sequence document and trigger a full resequence.
     if (
       documents[index].sequence_number !== expectedSequence ||
       documents[index][idField] !== expectedId
@@ -20,6 +24,7 @@ export const resequenceDocuments = async (Model, buildId, idField) => {
     return documents;
   }
 
+  // Temporarily assign placeholder ids so the final id values remain unique.
   for (let index = 0; index < documents.length; index += 1) {
     await Model.updateOne(
       { _id: documents[index]._id },
@@ -32,6 +37,7 @@ export const resequenceDocuments = async (Model, buildId, idField) => {
     );
   }
 
+  // Rebuild the final ids and sequence numbers in display order.
   for (let index = 0; index < documents.length; index += 1) {
     const nextSequence = index + 1;
 

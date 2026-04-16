@@ -60,6 +60,9 @@ function SubjectOptionRow({ subject }) {
   );
 }
  
+/**
+ * Render the course management screen.
+ */
 export default function CourseMaster() {
   const [form, setForm] = useState(initialForm);
   const [errors, setErrors] = useState({});

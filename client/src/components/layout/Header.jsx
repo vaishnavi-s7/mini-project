@@ -1,5 +1,8 @@
 import { useNavigate } from "react-router-dom";
 
+/**
+ * Render the top application header with a home shortcut.
+ */
 export default function Header() {
   const navigate = useNavigate();
 

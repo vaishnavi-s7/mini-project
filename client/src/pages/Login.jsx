@@ -3,6 +3,9 @@ import { useNavigate, Link } from "react-router-dom";
 import { loginUser } from "../services/authService";
 import toast from "react-hot-toast";
 
+/**
+ * Render the login form.
+ */
 export default function Login() {
   const navigate = useNavigate();
 

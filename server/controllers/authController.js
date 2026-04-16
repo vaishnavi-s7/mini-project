@@ -3,7 +3,9 @@ import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import { sendOTPEmail, sendWelcomeEmail } from "../services/emailService.js";
 
-// ================= PASSWORD VALIDATION =================
+/**
+ * Check whether a password satisfies the app's minimum security rules.
+ */
 const isValidPassword = (password) => {
   return (
     password.length >= 6 &&
@@ -13,11 +15,14 @@ const isValidPassword = (password) => {
   );
 };
 
-// ================= REGISTER =================
+/**
+ * Register a new user account and send a welcome email.
+ */
 export const register = async (req, res) => {
   try {
     const { name, email, password } = req.body;
 
+    // Reject weak passwords before checking for existing accounts.
     if (!isValidPassword(password)) {
       return res.status(400).json({
         message:
@@ -46,13 +51,16 @@ export const register = async (req, res) => {
   }
 };
 
-// ================= LOGIN =================
+/**
+ * Authenticate a user and return a JWT token.
+ */
 export const login = async (req, res) => {
   try {
     const { email, password } = req.body;
 
     const user = await User.findOne({ email });
 
+    // Reject unknown users early to avoid leaking extra account details.
     if (!user) {
       return res.status(400).json({ message: "User not found" });
     }
@@ -72,13 +80,16 @@ export const login = async (req, res) => {
   }
 };
 
-// ================= FORGOT PASSWORD =================
+/**
+ * Generate and email an OTP for password reset.
+ */
 export const forgotPassword = async (req, res) => {
   try {
     const { email } = req.body;
 
     const user = await User.findOne({ email });
 
+    // If the account does not exist, stop the reset flow immediately.
     if (!user) {
       return res.status(400).json({ message: "User not found" });
     }
@@ -86,6 +97,7 @@ export const forgotPassword = async (req, res) => {
     const otp = Math.floor(100000 + Math.random() * 900000).toString();
 
     user.otp = otp;
+    // Keep the resend expiry aligned with the original OTP flow.
     user.otpExpiry = Date.now() + 2 * 60 * 1000;
     user.lastOtpSent = Date.now();
 
@@ -102,17 +114,21 @@ export const forgotPassword = async (req, res) => {
   }
 };
 
-// ================= RESEND OTP =================
+/**
+ * Resend a password reset OTP while enforcing a short cooldown.
+ */
 export const resendOTP = async (req, res) => {
   try {
     const { email } = req.body;
 
     const user = await User.findOne({ email });
 
+    // If the account does not exist, stop the resend flow immediately.
     if (!user) {
       return res.status(400).json({ message: "User not found" });
     }
 
+    // Do not resend if the user is still inside the cooldown window.
     if (user.lastOtpSent && Date.now() - user.lastOtpSent < 30000) {
       return res.status(400).json({
         message: "Wait 30 seconds before resending OTP",
@@ -138,14 +154,17 @@ export const resendOTP = async (req, res) => {
   }
 };
 
-// ================= RESET PASSWORD =================
+/**
+ * Verify the OTP and update the user's password.
+ */
 export const resetPassword = async (req, res) => {
   try {
     let { email, otp, newPassword } = req.body;
 
-    // CLEAN INPUT
+    // Normalize the OTP before matching it against the stored value.
     otp = otp.trim();
 
+    // Validate the new password before looking up the account.
     if (!isValidPassword(newPassword)) {
       return res.status(400).json({
         message:
@@ -178,7 +197,9 @@ export const resetPassword = async (req, res) => {
     res.status(500).json({ message: "Server error" });
   }
 };
-// ================= GET PROFILE =================
+/**
+ * Return the authenticated user's profile without the password field.
+ */
 export const getProfile = async (req, res) => {
   try {
     const user = await User.findById(req.user.id).select("-password");
@@ -190,7 +211,9 @@ export const getProfile = async (req, res) => {
   }
 };
 
-// ================= UPDATE PROFILE =================
+/**
+ * Update editable profile fields for the authenticated user.
+ */
 export const updateProfile = async (req, res) => {
   try {
     const { phone, age, address, grade, section } = req.body;
@@ -211,7 +234,9 @@ export const updateProfile = async (req, res) => {
   }
 };
 
-// ================= CHANGE PASSWORD =================
+/**
+ * Change the authenticated user's password after verifying the current one.
+ */
 export const changePassword = async (req, res) => {
   try {
     const userId = req.user.id;
@@ -225,6 +250,7 @@ export const changePassword = async (req, res) => {
       user.password
     );
 
+    // Block the update when the current password does not match.
     if (!isMatch) {
       return res.status(400).json({ message: "Incorrect current password" });
     }

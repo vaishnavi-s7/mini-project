@@ -3,8 +3,14 @@ import { useEffect, useMemo, useState } from "react";
 import toast from "react-hot-toast";
 import { getLessons } from "../services/lessonService";
 
+/**
+ * Normalize text for case-insensitive comparisons.
+ */
 const normalize = (value) => String(value || "").toLowerCase();
 
+/**
+ * Score a suggestion based on how closely it matches the query.
+ */
 const suggestionScore = (value, query) => {
   const normalizedValue = normalize(value);
   const normalizedQuery = normalize(query.trim());
@@ -16,6 +22,9 @@ const suggestionScore = (value, query) => {
   return 3;
 };
 
+/**
+ * Render a searchable input with suggestion dropdown support.
+ */
 const SearchField = ({
   fieldKey,
   label,
@@ -67,6 +76,9 @@ const SearchField = ({
   </div>
 );
 
+/**
+ * Render the question bank management screen.
+ */
 export default function QuestionBank() {
   const [lessons, setLessons] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -133,6 +145,9 @@ export default function QuestionBank() {
     );
   }, [allQuestions]);
 
+  /**
+   * Return the best matching suggestions for the active filter.
+   */
   const getSuggestions = (options, query) =>
     options
       .filter((option) => normalize(option).includes(normalize(query)))
@@ -159,6 +174,9 @@ export default function QuestionBank() {
     [generalOptions, generalSearch]
   );
 
+  /**
+   * Reset every search field and clear the active suggestion state.
+   */
   const clearFilters = () => {
     setGeneralSearch("");
     setSubjectSearch("");
@@ -302,7 +320,7 @@ export default function QuestionBank() {
                   {filteredQuestions.map((question) => (
                     <div
                       key={question.id}
-                      className="min-h-[168px] rounded-2xl border border-slate-200 bg-white p-5 shadow-sm transition hover:shadow-md"
+                      className="min-h-[168px] rounded-2xl border border-slate-200 bg-white p-5 shadow-sm transition hover:shadow-md flex h-full flex-col"
                     >
                       <div className="flex items-start justify-between gap-3">
                         <div className="min-w-0">
@@ -316,20 +334,22 @@ export default function QuestionBank() {
                         </div>
                       </div>
 
-                      <p className="mt-4 whitespace-pre-wrap text-sm leading-6 text-slate-600">
-                        {question.content || "No question content"}
-                      </p>
+                      <div className="flex flex-1 flex-col">
+                        <p className="mt-4 whitespace-pre-wrap text-sm leading-6 text-slate-600">
+                          {question.content || "No question content"}
+                        </p>
 
-                      <div className="mt-4 flex flex-wrap gap-2">
-                        <span className="rounded-full bg-blue-50 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wider text-blue-700">
-                          {question.subjectCode}
-                        </span>
-                        <span className="rounded-full bg-indigo-50 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wider text-indigo-700">
-                          {question.courseCode}
-                        </span>
-                        <span className="rounded-full bg-emerald-50 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wider text-emerald-700">
-                          {question.lessonCode}
-                        </span>
+                        <div className="mt-auto flex flex-wrap gap-2 pt-4">
+                          <span className="rounded-full bg-blue-50 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wider text-blue-700">
+                            {question.subjectCode}
+                          </span>
+                          <span className="rounded-full bg-indigo-50 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wider text-indigo-700">
+                            {question.courseCode}
+                          </span>
+                          <span className="rounded-full bg-emerald-50 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wider text-emerald-700">
+                            {question.lessonCode}
+                          </span>
+                        </div>
                       </div>
                     </div>
                   ))}

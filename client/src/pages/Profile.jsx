@@ -3,6 +3,9 @@ import { getProfile, updateProfile } from "../services/authService";
 import toast from "react-hot-toast";
 import { useNavigate } from "react-router-dom";
 
+/**
+ * Render the authenticated user's profile page.
+ */
 export default function Profile() {
     const [form, setForm] = useState({
         name: "",

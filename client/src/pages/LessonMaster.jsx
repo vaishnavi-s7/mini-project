@@ -47,6 +47,9 @@ const PAGE_SIZE = 3;
 
 const EMPTY_BANK = () => ({ title: "", content: "" });
 
+/**
+ * Render the lesson management screen.
+ */
 export default function LessonMaster() {
     const [form, setForm] = useState(initialForm);
     const [errors, setErrors] = useState({});

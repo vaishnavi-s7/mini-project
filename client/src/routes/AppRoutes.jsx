@@ -18,6 +18,9 @@ import ChangePassword from "../pages/ChangePassword";
  
 import ProtectedWrapper from "../components/common/ProtectedWrapper";
  
+/**
+ * Define public and protected application routes.
+ */
 export default function AppRoutes() {
   return (
     <Routes>

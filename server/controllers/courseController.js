@@ -6,12 +6,19 @@ import { resequenceDocuments } from "../utils/resequenceDocuments.js";
 const buildCourseId = (sequenceNumber) =>
   `CRS${String(sequenceNumber).padStart(3, "0")}`;
 
+/**
+ * Escape user input before using it inside a regular expression.
+ */
 const escapeRegex = (value) => value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
+/**
+ * Create a course and attach it to an existing subject.
+ */
 export const createCourse = async (req, res) => {
   try {
     const { course_name, course_code, subject, description, status } = req.body;
 
+    // Require the fields that uniquely identify a course.
     if (
       !course_name?.trim() ||
       !course_code?.trim() ||
@@ -24,6 +31,7 @@ export const createCourse = async (req, res) => {
 
     const existingSubject = await Subject.findById(subject.trim());
 
+    // Reject the request when the subject cannot be resolved.
     if (!existingSubject) {
       return res.status(404).json({
         message: "Selected subject not found",
@@ -48,6 +56,7 @@ export const createCourse = async (req, res) => {
       ],
     });
 
+    // Prevent duplicate course names or codes under the same subject.
     if (existingCourse) {
       return res.status(409).json({
         message: "Course name or course code already exists for this subject",
@@ -91,6 +100,9 @@ export const createCourse = async (req, res) => {
   }
 };
 
+/**
+ * Return all courses in sequence order.
+ */
 export const getCourses = async (_req, res) => {
   try {
     await resequenceDocuments(Course, buildCourseId, "course_id");
@@ -111,11 +123,15 @@ export const getCourses = async (_req, res) => {
   }
 };
 
+/**
+ * Update a course after validating the target subject and status.
+ */
 export const updateCourse = async (req, res) => {
   try {
     const { id } = req.params;
     const { course_name, subject, description, status } = req.body;
 
+    // Require the fields that uniquely identify the course.
     if (!course_name?.trim() || !subject?.trim()) {
       return res.status(400).json({
         message: "Course name and subject are required",
@@ -130,6 +146,7 @@ export const updateCourse = async (req, res) => {
 
     const existingSubject = await Subject.findById(subject.trim());
 
+    // Stop if the supplied subject id does not exist.
     if (!existingSubject) {
       return res.status(404).json({
         message: "Selected subject not found",
@@ -148,6 +165,7 @@ export const updateCourse = async (req, res) => {
       },
     });
 
+    // Reject changes that would duplicate another course in the same subject.
     if (duplicateCourse) {
       return res.status(409).json({
         message: "Course name already exists for this subject",
@@ -183,11 +201,15 @@ export const updateCourse = async (req, res) => {
   }
 };
 
+/**
+ * Delete a course and clean up any lessons linked to it.
+ */
 export const deleteCourse = async (req, res) => {
   try {
     const { id } = req.params;
     const course = await Course.findById(id);
 
+    // Return 404 when there is no course to delete.
     if (!course) {
       return res.status(404).json({
         message: "Course not found",
@@ -197,7 +219,11 @@ export const deleteCourse = async (req, res) => {
     await Lesson.deleteMany({ course: id });
     await Course.findByIdAndDelete(id);
     await resequenceDocuments(Course, buildCourseId, "course_id");
-    await resequenceDocuments(Lesson, (sequenceNumber) => `LES${String(sequenceNumber).padStart(3, "0")}`, "lesson_id");
+    await resequenceDocuments(
+      Lesson,
+      (sequenceNumber) => `LES${String(sequenceNumber).padStart(3, "0")}`,
+      "lesson_id"
+    );
 
     res.json({
       message: "Course deleted successfully",

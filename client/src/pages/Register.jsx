@@ -4,6 +4,9 @@ import { registerUser } from "../services/authService";
 import { validatePassword } from "../utils/validator";
 import { toast } from "react-toastify";
 
+/**
+ * Render the account registration form.
+ */
 export default function Register() {
   const navigate = useNavigate();
 

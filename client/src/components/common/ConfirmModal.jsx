@@ -1,3 +1,6 @@
+/**
+ * Render a confirmation modal with cancel and confirm actions.
+ */
 export default function ConfirmModal({
   open,
   title,
@@ -9,6 +12,7 @@ export default function ConfirmModal({
   onCancel,
   isLoading = false,
 }) {
+  // Do not render the modal while it is closed.
   if (!open) {
     return null;
   }

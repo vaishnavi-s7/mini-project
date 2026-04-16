@@ -67,6 +67,9 @@ const statusStyles = {
   Inactive: "bg-slate-100 text-slate-600 ring-slate-200",
 };
 
+/**
+ * Map a status value to the matching card style.
+ */
 const getStatusClassName = (status) => {
   if (status === "Active") {
     return statusStyles.Active;
@@ -81,6 +84,9 @@ const modalKeyToKind = {
   lessons: "lesson",
 };
 
+/**
+ * Resolve the data kind for items shown in the modal.
+ */
 const resolveItemKind = (item, activeModalKey) => {
   if (item.kind) {
     return item.kind;
@@ -93,6 +99,9 @@ const resolveItemKind = (item, activeModalKey) => {
   return modalKeyToKind[activeModalKey] || "subject";
 };
 
+/**
+ * Render the public home page.
+ */
 export default function Home() {
   const [subjects, setSubjects] = useState([]);
   const [courses, setCourses] = useState([]);

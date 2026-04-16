@@ -3,6 +3,9 @@ import { forgotPassword } from "../services/authService";
 import { useNavigate, Link } from "react-router-dom";
 import toast from "react-hot-toast";
 
+/**
+ * Render the password reset request form.
+ */
 export default function ForgotPassword() {
   const [email, setEmail] = useState("");
   const navigate = useNavigate();

@@ -9,6 +9,9 @@ import { protect } from "../middleware/authMiddleware.js";
 
 const router = express.Router();
 
+/**
+ * Read, create, update, and delete course records.
+ */
 router.get("/", protect, getCourses);
 router.post("/", protect, createCourse);
 router.delete("/:id", protect, deleteCourse);

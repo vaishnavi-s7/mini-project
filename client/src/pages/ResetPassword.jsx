@@ -4,6 +4,9 @@ import { useNavigate, Link, useLocation } from "react-router-dom";
 import toast from "react-hot-toast";
 import { validatePassword } from "../utils/validator";
 
+/**
+ * Render the OTP-based password reset form.
+ */
 export default function ResetPassword() {
   const [form, setForm] = useState({
     otpArray: ["", "", "", "", "", ""],

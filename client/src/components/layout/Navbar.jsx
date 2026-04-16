@@ -2,6 +2,9 @@ import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useState, useEffect, useRef } from "react";
 import { UserCircle, Menu, X } from "lucide-react";
 
+/**
+ * Render the main navigation bar and account menu.
+ */
 export default function Navbar() {
   const location = useLocation();
   const navigate = useNavigate();
@@ -14,7 +17,7 @@ export default function Navbar() {
 
   const navLinks = [
     { to: "/", label: "Home" },
-    { to: "/upload-csv", label: "Upload CSV" },
+    { to: "/upload-csv", label: "Upload" },
     { to: "/view-data", label: "Student Details" },
     { to: "/subject-master", label: "Subjects" },
     { to: "/course-master", label: "Courses" },
@@ -29,7 +32,7 @@ export default function Navbar() {
       : "text-gray-700 hover:bg-blue-100 hover:text-blue-700"
     }`;
 
-  // Close dropdown when clicking outside
+  // Close the profile dropdown when clicking outside of it.
   useEffect(() => {
     const handleClickOutside = (e) => {
       if (dropdownRef.current && !dropdownRef.current.contains(e.target)) {

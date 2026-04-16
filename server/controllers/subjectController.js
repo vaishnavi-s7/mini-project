@@ -3,15 +3,25 @@ import Course from "../models/Course.js";
 import Lesson from "../models/Lesson.js";
 import { resequenceDocuments } from "../utils/resequenceDocuments.js";
  
+/**
+ * Build the public subject identifier from a sequence number.
+ */
 const buildSubjectId = (sequenceNumber) =>
   `SUB${String(sequenceNumber).padStart(3, "0")}`;
  
+/**
+ * Escape user input before using it inside a regular expression.
+ */
 const escapeRegex = (value) => value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
  
+/**
+ * Create a subject record.
+ */
 export const createSubject = async (req, res) => {
   try {
     const { subject_name, subject_code, description, status } = req.body;
  
+    // Require the fields that identify a subject.
     if (!subject_name?.trim() || !subject_code?.trim()) {
       return res.status(400).json({
         message: "Subject name and subject code are required",
@@ -35,6 +45,7 @@ export const createSubject = async (req, res) => {
       ],
     });
  
+    // Block duplicate subject names or codes.
     if (existingSubject) {
       return res.status(409).json({
         message: "Subject name or subject code already exists",
@@ -76,6 +87,9 @@ export const createSubject = async (req, res) => {
   }
 };
  
+/**
+ * Return all subjects in sequence order.
+ */
 export const getSubjects = async (_req, res) => {
   try {
     const subjects = await resequenceDocuments(
@@ -96,11 +110,15 @@ export const getSubjects = async (_req, res) => {
   }
 };
  
+/**
+ * Update an existing subject.
+ */
 export const updateSubject = async (req, res) => {
   try {
     const { id } = req.params;
     const { subject_name, description, status } = req.body;
  
+    // Require a subject name before updating the record.
     if (!subject_name?.trim()) {
       return res.status(400).json({
         message: "Subject name is required",
@@ -124,6 +142,7 @@ export const updateSubject = async (req, res) => {
       },
     });
  
+    // Prevent renaming the subject to an existing one.
     if (duplicateSubject) {
       return res.status(409).json({
         message: "Subject name already exists",
@@ -158,11 +177,15 @@ export const updateSubject = async (req, res) => {
   }
 };
 
+/**
+ * Delete a subject and cascade its dependent courses and lessons.
+ */
 export const deleteSubject = async (req, res) => {
   try {
     const { id } = req.params;
     const subject = await Subject.findById(id);
 
+    // Return 404 when the subject cannot be located.
     if (!subject) {
       return res.status(404).json({
         message: "Subject not found",
@@ -180,8 +203,16 @@ export const deleteSubject = async (req, res) => {
     await Subject.findByIdAndDelete(id);
 
     await resequenceDocuments(Subject, buildSubjectId, "subject_id");
-    await resequenceDocuments(Course, (sequenceNumber) => `CRS${String(sequenceNumber).padStart(3, "0")}`, "course_id");
-    await resequenceDocuments(Lesson, (sequenceNumber) => `LES${String(sequenceNumber).padStart(3, "0")}`, "lesson_id");
+    await resequenceDocuments(
+      Course,
+      (sequenceNumber) => `CRS${String(sequenceNumber).padStart(3, "0")}`,
+      "course_id"
+    );
+    await resequenceDocuments(
+      Lesson,
+      (sequenceNumber) => `LES${String(sequenceNumber).padStart(3, "0")}`,
+      "lesson_id"
+    );
 
     res.json({
       message: "Subject deleted successfully",

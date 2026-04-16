@@ -2,9 +2,13 @@ import Student from "../models/Student.js";
 import csv from "csv-parser";
 import fs from "fs";
 
+/**
+ * Upload a student CSV file, deduplicate emails, and persist new rows.
+ */
 export const uploadStudents = async (req, res) => {
   const results = [];
 
+  // Stream the uploaded file into the CSV parser.
   fs.createReadStream(req.file.path)
     .pipe(csv())
     .on("data", (data) => results.push(data))
@@ -14,6 +18,7 @@ export const uploadStudents = async (req, res) => {
 
         const emails = results.map(r => r.email);
 
+        // Look up rows that already exist before inserting new ones.
         const existingStudents = await Student.find({
           email: { $in: emails }
         });
@@ -38,6 +43,7 @@ export const uploadStudents = async (req, res) => {
 
       } catch (error) {
 
+        // Return a server error when CSV processing fails.
         res.status(500).json({
           message: "Error processing CSV",
           error
@@ -48,6 +54,10 @@ export const uploadStudents = async (req, res) => {
     });
 
 };
+
+/**
+ * Return the full student list.
+ */
 export const getStudents = async (req, res) => {
     try {
       const students = await Student.find();

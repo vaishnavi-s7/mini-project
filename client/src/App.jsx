@@ -4,6 +4,10 @@ import AppRoutes from "./routes/AppRoutes";
 import Header from "./components/layout/Header";
 import { Toaster } from "react-hot-toast";
 import "react-toastify/dist/ReactToastify.css";
+
+/**
+ * Compose the shared application shell around all routes.
+ */
 function App() {
   return (
     <div className="min-h-screen flex flex-col bg-gray-100">

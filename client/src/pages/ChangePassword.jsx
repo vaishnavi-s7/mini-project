@@ -4,6 +4,9 @@ import { changePassword } from "../services/authService";
 import { validatePassword } from "../utils/validator";
 import toast from "react-hot-toast";
 
+/**
+ * Render the authenticated password change form.
+ */
 export default function ChangePassword() {
     const navigate = useNavigate();
 
@@ -75,7 +78,7 @@ export default function ChangePassword() {
                                     required
                                 />
 
-                                {/* 🔥 NEW PASSWORD WITH VALIDATION */}
+                                {/* NEW PASSWORD WITH VALIDATION */}
                                 <div className="relative">
                                     <input
                                         type="password"

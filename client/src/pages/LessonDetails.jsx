@@ -7,15 +7,24 @@ import {
   updateLessonQuestionBank,
 } from "../services/lessonService";
  
+/**
+ * Build a new in-memory question bank entry.
+ */
 const createQuestionBankItem = (index = 0) => ({
   local_id: `new-${Date.now()}-${index}`,
   title: "",
   content: "",
 });
  
+/**
+ * Create the initial question bank state when a lesson has no entries.
+ */
 const createInitialQuestionBanks = () =>
   [createQuestionBankItem(0)];
  
+/**
+ * Render the lesson detail and question bank editor.
+ */
 export default function LessonDetails() {
   const { lessonId } = useParams();
   const [lesson, setLesson] = useState(null);

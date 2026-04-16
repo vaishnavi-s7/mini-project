@@ -1,7 +1,9 @@
 import multer from "multer";
 import path from "path";
 
-// storage config
+/**
+ * Configure disk storage for uploaded files.
+ */
 const storage = multer.diskStorage({
   destination: function (req, file, cb) {
     cb(null, "uploads/");
@@ -12,7 +14,9 @@ const storage = multer.diskStorage({
   },
 });
 
-// file filter (only CSV)
+/**
+ * Accept only CSV uploads.
+ */
 const fileFilter = (req, file, cb) => {
   if (file.mimetype === "text/csv") {
     cb(null, true);
@@ -21,6 +25,9 @@ const fileFilter = (req, file, cb) => {
   }
 };
 
+/**
+ * Multer instance used for upload endpoints.
+ */
 export const upload = multer({
   storage,
   fileFilter,

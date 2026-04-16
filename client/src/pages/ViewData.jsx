@@ -2,6 +2,9 @@ import { useEffect, useState } from "react";
 import { getAllData } from "../services/dataService";
 import { useNavigate } from "react-router-dom";
 
+/**
+ * Render the student data table and filters.
+ */
 export default function ViewData() {
   const [data, setData] = useState([]);
   const [isAuthenticated, setIsAuthenticated] = useState(false);

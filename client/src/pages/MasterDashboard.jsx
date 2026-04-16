@@ -27,6 +27,9 @@ const statusStyles = {
   Archived: "bg-rose-50 text-rose-700 border-rose-100",
 };
  
+/**
+ * Map a raw status value to one of the known badge styles.
+ */
 const getStatusKey = (status) => {
   if (status === "Active" || status === "Inactive" || status === "Draft" || status === "Archived") {
     return status;
@@ -34,6 +37,9 @@ const getStatusKey = (status) => {
   return "Inactive";
 };
  
+/**
+ * Display a colored badge for the current item status.
+ */
 const StatusBadge = ({ status }) => {
   const statusKey = getStatusKey(status);
  
@@ -54,6 +60,9 @@ const StatusBadge = ({ status }) => {
   );
 };
  
+/**
+ * Render a selectable node card used in the hierarchy view.
+ */
 const NodeCard = ({ title, code, status, isSelected, onClick, iconElement, description }) => (
   <button
     type="button"
@@ -89,11 +98,17 @@ const NodeCard = ({ title, code, status, isSelected, onClick, iconElement, descr
   </button>
 );
  
+/**
+ * Normalize text for case-insensitive comparisons.
+ */
 const normalize = (value) => String(value || "").toLowerCase();
 const TABLE_LESSON_ROW_HEIGHT = 44;
 const HIERARCHY_VIEW_HEIGHT = "calc(100vh - 140px)";
 const HIERARCHY_LIST_MAX_HEIGHT = "28rem";
  
+/**
+ * Render the dashboard overview for subjects, courses, and lessons.
+ */
 export default function MasterDashboardContent() {
   const navigate = useNavigate();
   const location = useLocation();

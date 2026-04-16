@@ -5,9 +5,14 @@ import { getStudents } from "../controllers/studentController.js"; // ✅ ADD TH
 
 const router = express.Router();
 
+/**
+ * Return the full student list.
+ */
 router.get("/", getStudents);
 
-// existing upload route
+/**
+ * Accept a CSV file upload and process it.
+ */
 router.post("/upload", upload.single("file"), uploadCSV);
 
 export default router;
