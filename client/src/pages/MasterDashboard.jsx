@@ -534,12 +534,7 @@ export default function MasterDashboardContent() {
                       </div>
                     ))}
                   </div>
-                ) : (
-                  <div className="flex h-full flex-col items-center justify-center space-y-2 text-slate-400">
-                    <ChevronRight className="h-8 w-8 opacity-20" />
-                    <p className="text-xs font-medium">Select a course to view lessons</p>
-                  </div>
-                )}
+                ) : null}
               </div>
             </div>
           </div>
