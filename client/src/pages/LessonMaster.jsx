@@ -615,7 +615,7 @@ export default function LessonMaster() {
                         <button
                             type="submit"
                             disabled={isSaving || isCoursesLoading || activeCourses.length === 0}
-                            className="w-full rounded-xl bg-blue-600 px-4 py-3 font-semibold text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-blue-300 cursor-pointer"
+                            className="w-full rounded-xl bg-blue-900 px-4 py-3 font-semibold text-white transition hover:bg-blue-800 disabled:cursor-not-allowed disabled:bg-blue-300 cursor-pointer"
                         >
                             {isSaving ? "Saving Lesson..." : "Save"}
                         </button>
@@ -788,7 +788,7 @@ export default function LessonMaster() {
                                     type="button"
                                     onClick={handleAddBank}
                                     disabled={!canAddBank}
-                                    className="flex items-center gap-1.5 rounded-xl bg-blue-600 px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-blue-300"
+                                    className="flex items-center gap-1.5 rounded-xl bg-blue-900 px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-blue-800 disabled:cursor-not-allowed disabled:bg-blue-300"
                                     title="Add question bank"
                                 >
                                     <Plus size={12} strokeWidth={2.5} />
@@ -908,7 +908,7 @@ export default function LessonMaster() {
                                 <button
                                     type="button"
                                     onClick={handleUpload}
-                                    className="rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-blue-700"
+                                    className="rounded-xl bg-blue-900 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-blue-800"
                                 >
                                     Save
                                 </button>
@@ -1047,7 +1047,7 @@ export default function LessonMaster() {
                                 <button
                                     type="submit"
                                     disabled={isUpdating}
-                                    className="rounded-xl bg-blue-600 px-4 py-3 font-semibold text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-blue-300"
+                                    className="rounded-xl bg-blue-900 px-4 py-3 font-semibold text-white transition hover:bg-blue-800 disabled:cursor-not-allowed disabled:bg-blue-300"
                                 >
                                     {isUpdating ? "Saving Changes..." : "Save Changes"}
                                 </button>

@@ -1,7 +1,7 @@
 import express from "express";
 import { uploadCSV } from "../controllers/csvController.js";
 import { upload } from "../middleware/uploadMiddleware.js";
-import { getStudents } from "../controllers/studentController.js"; // ✅ ADD THIS
+import { createStudent, getStudents } from "../controllers/studentController.js";
 
 const router = express.Router();
 
@@ -9,6 +9,7 @@ const router = express.Router();
  * Return the full student list.
  */
 router.get("/", getStudents);
+router.post("/", createStudent);
 
 /**
  * Accept a CSV file upload and process it.

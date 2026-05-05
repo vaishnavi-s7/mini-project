@@ -571,7 +571,7 @@ export default function CourseMaster() {
             <button
               type="submit"
               disabled={isSaving || isSubjectsLoading || activeSubjects.length === 0}
-              className="w-full rounded-xl bg-blue-600 px-4 py-3 font-semibold text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-blue-300"
+              className="w-full rounded-xl bg-blue-900 px-4 py-3 font-semibold text-white transition hover:bg-blue-800 disabled:cursor-not-allowed disabled:bg-blue-300"
             >
               {isSaving ? "Saving Course..." : "Save"}
             </button>
@@ -860,7 +860,7 @@ export default function CourseMaster() {
                 <button
                   type="submit"
                   disabled={isUpdating}
-                  className="rounded-xl bg-blue-600 px-4 py-3 font-semibold text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-blue-300"
+                  className="rounded-xl bg-blue-900 px-4 py-3 font-semibold text-white transition hover:bg-blue-800 disabled:cursor-not-allowed disabled:bg-blue-300"
                 >
                   {isUpdating ? "Saving Changes..." : "Save Changes"}
                 </button>

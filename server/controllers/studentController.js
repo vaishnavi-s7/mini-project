@@ -74,3 +74,53 @@ export const getStudents = async (req, res) => {
       });
     }
   };
+
+/**
+ * Create a single student record.
+ */
+export const createStudent = async (req, res) => {
+  try {
+    const { name, email, grade, section } = req.body;
+
+    if (!name?.trim() || !email?.trim() || !String(grade).trim() || !section?.trim()) {
+      return res.status(400).json({
+        message: "Name, email, grade, and section are required",
+      });
+    }
+
+    const normalizedEmail = email.trim().toLowerCase();
+    const normalizedSection = section.trim().toUpperCase();
+    const numericGrade = Number(grade);
+
+    if (!Number.isInteger(numericGrade) || numericGrade < 1 || numericGrade > 10) {
+      return res.status(400).json({
+        message: "Grade must be a whole number between 1 and 10",
+      });
+    }
+
+    const existingStudent = await Student.findOne({ email: normalizedEmail });
+
+    if (existingStudent) {
+      return res.status(409).json({
+        message: "Student email already exists",
+      });
+    }
+
+    const student = await Student.create({
+      name: name.trim(),
+      email: normalizedEmail,
+      grade: numericGrade,
+      section: normalizedSection,
+    });
+
+    res.status(201).json({
+      message: "Student created successfully",
+      data: student,
+    });
+  } catch (error) {
+    res.status(500).json({
+      message: "Failed to create student",
+      error,
+    });
+  }
+};
