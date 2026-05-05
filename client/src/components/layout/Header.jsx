@@ -5,6 +5,8 @@ import { useNavigate } from "react-router-dom";
  */
 export default function Header() {
   const navigate = useNavigate();
+  const user = JSON.parse(localStorage.getItem("user") || "null");
+  const homePath = user?.role === "HOD" ? "/hod-dashboard" : "/";
 
   return (
     <header className="bg-gray-700 text-white">
@@ -12,7 +14,7 @@ export default function Header() {
 
         <h1
           className="text-sm sm:text-lg md:text-xl lg:text-2xl font-bold cursor-pointer truncate"
-          onClick={() => navigate("/")}
+          onClick={() => navigate(homePath)}
         >
           AcadX
         </h1>

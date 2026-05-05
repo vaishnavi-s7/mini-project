@@ -15,6 +15,10 @@ import ResetPassword from "../pages/ResetPassword";
 import Profile from "../pages/Profile";
 import ChangePassword from "../pages/ChangePassword";
 import HODDashboard from "../pages/HODDashboard";
+import HODPendingApprovals from "../pages/HODPendingApprovals";
+import HODFacultyOverview from "../pages/HODFacultyOverview";
+import HODAnnouncements from "../pages/HODAnnouncements";
+import HODStudentDetails from "../pages/HODStudentDetails";
  
 import ProtectedWrapper from "../components/common/ProtectedWrapper";
  
@@ -30,14 +34,46 @@ export default function AppRoutes() {
       <Route path="/login" element={<Login />} />
       <Route path="/forgot-password" element={<ForgotPassword />} />
       <Route path="/reset-password" element={<ResetPassword />} />
-      {/* <Route
+      <Route
         path="/hod-dashboard"
         element={
           <ProtectedWrapper role="HOD">
             <HODDashboard />
           </ProtectedWrapper>
         }
-      /> */}
+      />
+      <Route
+        path="/hod-pending-approvals"
+        element={
+          <ProtectedWrapper role="HOD">
+            <HODPendingApprovals />
+          </ProtectedWrapper>
+        }
+      />
+      <Route
+        path="/hod-faculty-overview"
+        element={
+          <ProtectedWrapper role="HOD">
+            <HODFacultyOverview />
+          </ProtectedWrapper>
+        }
+      />
+      <Route
+        path="/hod-announcements"
+        element={
+          <ProtectedWrapper role="HOD">
+            <HODAnnouncements />
+          </ProtectedWrapper>
+        }
+      />
+      <Route
+        path="/hod-student-details"
+        element={
+          <ProtectedWrapper role="HOD">
+            <HODStudentDetails />
+          </ProtectedWrapper>
+        }
+      />
       <Route
         path="/change-password"
         element={

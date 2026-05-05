@@ -5,6 +5,25 @@ import { sendTeacherWelcomeEmail } from "../services/emailService.js";
 const DEFAULT_TEACHER_PASSWORD = "Password01!";
 
 /**
+ * Return the teacher accounts managed by the HOD.
+ */
+export const getTeachers = async (_req, res) => {
+  try {
+    const teachers = await User.find({ role: "TEACHER" })
+      .select("_id name username email role subject createdAt updatedAt")
+      .sort({ createdAt: -1 });
+
+    res.json({
+      success: true,
+      data: teachers,
+    });
+  } catch (error) {
+    console.log("GET TEACHERS ERROR:", error);
+    res.status(500).json({ message: "Failed to fetch teachers" });
+  }
+};
+
+/**
  * Create a teacher account. This route is restricted to the HOD.
  */
 export const createTeacher = async (req, res) => {

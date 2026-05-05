@@ -28,7 +28,7 @@ export default function Login() {
       localStorage.setItem("user", JSON.stringify(res.data.user));
 
       toast.success("Login successful");
-      navigate(res.data.user?.role === "HOD" ? "/" : "/");
+      navigate(res.data.user?.role === "HOD" ? "/hod-dashboard" : "/");
     } catch (err) {
       console.log("FULL ERROR", err);
       console.log("RESPONSE", err.response);
