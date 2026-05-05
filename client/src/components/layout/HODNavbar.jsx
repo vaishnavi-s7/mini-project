@@ -99,6 +99,7 @@ export default function HODNavbar() {
 
   const handleLogout = () => {
     localStorage.clear();
+    window.dispatchEvent(new Event("auth-change"));
     navigate("/login");
   };
 
@@ -137,13 +138,6 @@ export default function HODNavbar() {
                   <div className="border-b px-4 py-3 text-sm font-semibold text-slate-900">
                     {user?.name || user?.username || "HOD"}
                   </div>
-                  <Link
-                    to="/profile"
-                    className="block px-4 py-2 text-sm hover:bg-slate-50"
-                    onClick={() => setOpen(false)}
-                  >
-                    Profile
-                  </Link>
                   <button
                     type="button"
                     onClick={handleLogout}
@@ -194,13 +188,6 @@ export default function HODNavbar() {
                   <Plus className="h-4 w-4" />
                   Add Teacher
                 </button>
-                <Link
-                  to="/profile"
-                  className="w-fit rounded-full px-3 py-2 text-sm hover:bg-slate-100"
-                  onClick={() => setMobileMenu(false)}
-                >
-                  Profile
-                </Link>
                 <button
                   type="button"
                   onClick={handleLogout}

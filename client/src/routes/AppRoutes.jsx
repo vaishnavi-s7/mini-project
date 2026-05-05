@@ -1,4 +1,4 @@
-import { Routes, Route } from "react-router-dom";
+import { Navigate, Routes, Route } from "react-router-dom";
 import Home from "../pages/Home";
 import UploadCSV from "../pages/UploadCSV";
 import ViewData from "../pages/ViewData";
@@ -21,6 +21,16 @@ import HODAnnouncements from "../pages/HODAnnouncements";
 import HODStudentDetails from "../pages/HODStudentDetails";
  
 import ProtectedWrapper from "../components/common/ProtectedWrapper";
+
+function RoleHome() {
+  const user = JSON.parse(localStorage.getItem("user") || "null");
+
+  if (user?.role === "HOD") {
+    return <Navigate to="/hod-dashboard" replace />;
+  }
+
+  return <Home />;
+}
  
 /**
  * Define public and protected application routes.
@@ -30,7 +40,7 @@ export default function AppRoutes() {
     <Routes>
  
       {/* PUBLIC ROUTES */}
-      <Route path="/" element={<Home />} />
+      <Route path="/" element={<RoleHome />} />
       <Route path="/login" element={<Login />} />
       <Route path="/forgot-password" element={<ForgotPassword />} />
       <Route path="/reset-password" element={<ResetPassword />} />

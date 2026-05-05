@@ -35,7 +35,7 @@ export default function Navbar() {
   ];
 
   const linkStyle = (path) =>
-    `inline-flex items-center justify-center whitespace-nowrap rounded-md px-4 py-2 text-sm sm:text-base font-medium transition ${
+    `inline-flex items-center justify-center whitespace-nowrap rounded-full px-4 py-2 text-sm font-medium transition ${
       location.pathname === path
         ? "bg-blue-900 text-white"
         : "text-slate-700 hover:bg-blue-50 hover:text-blue-900"
@@ -54,6 +54,7 @@ export default function Navbar() {
 
   const handleLogout = () => {
     localStorage.clear();
+    window.dispatchEvent(new Event("auth-change"));
     navigate("/login");
   };
 
@@ -94,7 +95,7 @@ export default function Navbar() {
   };
 
   return (
-    <nav className="bg-white shadow-md">
+    <nav className="relative z-20 border-b border-slate-200 bg-white/95 backdrop-blur">
       <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-3 sm:px-6">
         <div className="hidden flex-1 justify-center md:flex">
           <div className="flex flex-wrap justify-center gap-2">
@@ -121,7 +122,7 @@ export default function Navbar() {
               <button
                 type="button"
                 onClick={() => setStudentModalOpen(true)}
-                className="inline-flex items-center gap-2 rounded-md bg-blue-900 px-4 py-2 text-sm font-semibold text-white transition hover:bg-blue-800"
+                className="inline-flex items-center gap-2 rounded-full bg-blue-900 px-4 py-2 text-sm font-semibold text-white transition hover:bg-blue-800"
               >
                 <Plus className="h-4 w-4" />
                 Add Student
@@ -129,23 +130,15 @@ export default function Navbar() {
 
               <div className="relative" ref={dropdownRef}>
                 <UserCircle
-                  className="h-9 w-9 cursor-pointer text-blue-600 transition hover:scale-105"
+                  className="h-9 w-9 cursor-pointer text-slate-700 transition hover:scale-105"
                   onClick={() => setOpen((currentValue) => !currentValue)}
                 />
 
                 {open && (
-                  <div className="absolute right-0 z-50 mt-2 w-52 overflow-hidden rounded-xl border bg-white shadow-lg">
-                    <div className="border-b px-4 py-2 text-sm font-semibold">
+                  <div className="absolute right-0 z-50 mt-2 w-52 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-lg">
+                    <div className="border-b px-4 py-3 text-sm font-semibold text-slate-900">
                       {user?.name || "User"}
                     </div>
-
-                    <Link
-                      to="/profile"
-                      className="block px-4 py-2 hover:bg-blue-50"
-                      onClick={() => setOpen(false)}
-                    >
-                      Profile
-                    </Link>
 
                     <button
                       onClick={handleLogout}
@@ -205,19 +198,11 @@ export default function Navbar() {
                     setStudentModalOpen(true);
                     setMobileMenu(false);
                   }}
-                  className="inline-flex w-fit items-center gap-2 rounded-md bg-blue-900 px-3 py-2 text-sm font-semibold text-white transition hover:bg-blue-800"
+                  className="inline-flex w-fit items-center gap-2 rounded-full bg-blue-900 px-4 py-2 text-sm font-semibold text-white transition hover:bg-blue-800"
                 >
                   <Plus className="h-4 w-4" />
                   Add Student
                 </button>
-
-                <Link
-                  to="/profile"
-                  className="w-fit rounded-md px-3 py-2 text-sm hover:bg-blue-50"
-                  onClick={() => setMobileMenu(false)}
-                >
-                  Profile
-                </Link>
 
                 <button
                   onClick={handleLogout}

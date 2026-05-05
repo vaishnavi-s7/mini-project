@@ -26,6 +26,7 @@ export default function Login() {
 
       localStorage.setItem("token", res.data.token);
       localStorage.setItem("user", JSON.stringify(res.data.user));
+      window.dispatchEvent(new Event("auth-change"));
 
       toast.success("Login successful");
       navigate(res.data.user?.role === "HOD" ? "/hod-dashboard" : "/");
