@@ -10,11 +10,11 @@ import MasterDashboard from "../pages/MasterDashboard";
 import QuestionBank from "../pages/QuestionBank";
  
 import Login from "../pages/Login";
-import Register from "../pages/Register";
 import ForgotPassword from "../pages/ForgotPassword";
 import ResetPassword from "../pages/ResetPassword";
 import Profile from "../pages/Profile";
 import ChangePassword from "../pages/ChangePassword";
+import HODDashboard from "../pages/HODDashboard";
  
 import ProtectedWrapper from "../components/common/ProtectedWrapper";
  
@@ -28,9 +28,16 @@ export default function AppRoutes() {
       {/* PUBLIC ROUTES */}
       <Route path="/" element={<Home />} />
       <Route path="/login" element={<Login />} />
-      <Route path="/register" element={<Register />} />
       <Route path="/forgot-password" element={<ForgotPassword />} />
       <Route path="/reset-password" element={<ResetPassword />} />
+      {/* <Route
+        path="/hod-dashboard"
+        element={
+          <ProtectedWrapper role="HOD">
+            <HODDashboard />
+          </ProtectedWrapper>
+        }
+      /> */}
       <Route
         path="/change-password"
         element={

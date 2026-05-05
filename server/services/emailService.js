@@ -119,3 +119,65 @@ export const sendWelcomeEmail = async (email, name) => {
     console.log(" WELCOME EMAIL ERROR:", error);
   }
 };
+
+/**
+ * Send credentials to a teacher after the HOD creates the account.
+ */
+export const sendTeacherWelcomeEmail = async ({ username, email, password }) => {
+  try {
+    const loginUrl = process.env.CLIENT_LOGIN_URL || "http://localhost:5173/login";
+
+    const transporter = nodemailer.createTransport({
+      service: "gmail",
+      auth: {
+        user: process.env.EMAIL_USER,
+        pass: process.env.EMAIL_PASS,
+      },
+    });
+
+    const info = await transporter.sendMail({
+      from: `"AcadX" <${process.env.EMAIL_USER}>`,
+      to: email,
+      subject: "Welcome Onboard",
+      text: `Welcome to the system!
+
+Your account has been created by the HOD.
+
+Login Credentials:
+Username: ${username}
+Email: ${email}
+Password: ${password}
+
+Login here: ${loginUrl}
+
+For security reasons, please change your password after logging in using the 'Forgot Password' option.`,
+      html: `
+        <div style="font-family: Arial, sans-serif; line-height: 1.6;">
+          <p>Welcome to the system!</p>
+          <p>Your account has been created by the HOD.</p>
+          <p><strong>Login Credentials:</strong></p>
+          <p>
+            Username: ${username}<br />
+            Email: ${email}<br />
+            Password: ${password}
+          </p>
+          <p>
+            <a href="${loginUrl}"
+               style="display:inline-block; padding:12px 20px; background:#2563eb; color:#ffffff; text-decoration:none; border-radius:6px;">
+              Login to the application
+            </a>
+          </p>
+          <p>
+            For security reasons, please change your password after logging in
+            using the 'Forgot Password' option.
+          </p>
+        </div>
+      `,
+    });
+
+    console.log("Teacher welcome email sent:", info.response);
+  } catch (error) {
+    console.log("TEACHER WELCOME EMAIL ERROR:", error);
+    throw error;
+  }
+};

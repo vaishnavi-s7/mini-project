@@ -1,6 +1,8 @@
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useState, useEffect, useRef } from "react";
-import { UserCircle, Menu, X } from "lucide-react";
+import { Menu, Plus, UserCircle, X } from "lucide-react";
+import toast from "react-hot-toast";
+import { createTeacher } from "../../services/teacherService";
 
 /**
  * Render the main navigation bar and account menu.
@@ -11,9 +13,18 @@ export default function Navbar() {
 
   const [open, setOpen] = useState(false);
   const [mobileMenu, setMobileMenu] = useState(false);
+  const [teacherModalOpen, setTeacherModalOpen] = useState(false);
+  const [teacherForm, setTeacherForm] = useState({
+    username: "",
+    email: "",
+    subject: "",
+    password: "Password01!",
+  });
+  const [isCreatingTeacher, setIsCreatingTeacher] = useState(false);
   const dropdownRef = useRef();
 
-  const user = JSON.parse(localStorage.getItem("user"));
+  const user = JSON.parse(localStorage.getItem("user") || "null");
+  const isHod = user?.role === "HOD";
 
   const navLinks = [
     { to: "/", label: "Home" },
@@ -46,6 +57,41 @@ export default function Navbar() {
   const handleLogout = () => {
     localStorage.clear();
     navigate("/login");
+  };
+
+  const handleTeacherFormChange = (event) => {
+    const { name, value } = event.target;
+    setTeacherForm((prev) => ({ ...prev, [name]: value }));
+  };
+
+  const resetTeacherForm = () => {
+    setTeacherForm({
+      username: "",
+      email: "",
+      subject: "",
+      password: "Password01!",
+    });
+  };
+
+  const handleCreateTeacher = async (event) => {
+    event.preventDefault();
+
+    try {
+      setIsCreatingTeacher(true);
+      await createTeacher({
+        username: teacherForm.username,
+        email: teacherForm.email,
+        subject: teacherForm.subject,
+      });
+
+      toast.success("Teacher created and welcome email sent");
+      resetTeacherForm();
+      setTeacherModalOpen(false);
+    } catch (error) {
+      toast.error(error.response?.data?.message || "Failed to create teacher");
+    } finally {
+      setIsCreatingTeacher(false);
+    }
   };
 
   return (
@@ -84,6 +130,18 @@ export default function Navbar() {
           )}
 
           {user && (
+            <>
+              {isHod && (
+                <button
+                  type="button"
+                  onClick={() => setTeacherModalOpen(true)}
+                  className="inline-flex items-center gap-2 rounded-md bg-blue-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-blue-700"
+                >
+                  <Plus className="h-4 w-4" />
+                  Add Teacher
+                </button>
+              )}
+
             <div className="relative" ref={dropdownRef}>
               <UserCircle
                 className="w-9 h-9 text-blue-600 cursor-pointer hover:scale-105 transition"
@@ -113,6 +171,7 @@ export default function Navbar() {
                 </div>
               )}
             </div>
+            </>
           )}
         </div>
 
@@ -163,6 +222,20 @@ export default function Navbar() {
                   {user?.name || "User"}
                 </div>
 
+                {isHod && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setTeacherModalOpen(true);
+                      setMobileMenu(false);
+                    }}
+                    className="inline-flex w-fit items-center gap-2 rounded-md bg-blue-600 px-3 py-2 text-sm font-semibold text-white transition hover:bg-blue-700"
+                  >
+                    <Plus className="h-4 w-4" />
+                    Add Teacher
+                  </button>
+                )}
+
                 <Link
                   to="/profile"
                   className="px-3 py-2 hover:bg-blue-50 rounded-md text-sm w-fit"
@@ -179,6 +252,103 @@ export default function Navbar() {
                 </button>
               </div>
             )}
+          </div>
+        </div>
+      )}
+
+      {teacherModalOpen && isHod && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-slate-950/60 px-4">
+          <div className="w-full max-w-lg rounded-lg bg-white p-6 shadow-2xl">
+            <div className="mb-5 flex items-center justify-between gap-4">
+              <div>
+                <h2 className="text-xl font-bold text-slate-900">Add Teacher</h2>
+                <p className="mt-1 text-sm text-slate-500">
+                  The default password is assigned automatically.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setTeacherModalOpen(false)}
+                className="inline-flex h-9 w-9 items-center justify-center rounded-md text-slate-500 transition hover:bg-slate-100 hover:text-slate-900"
+                aria-label="Close add teacher form"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleCreateTeacher} className="space-y-4">
+              <div>
+                <label className="mb-1 block text-sm font-medium text-slate-700">
+                  Username
+                </label>
+                <input
+                  type="text"
+                  name="username"
+                  value={teacherForm.username}
+                  onChange={handleTeacherFormChange}
+                  className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20"
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="mb-1 block text-sm font-medium text-slate-700">
+                  Email
+                </label>
+                <input
+                  type="email"
+                  name="email"
+                  value={teacherForm.email}
+                  onChange={handleTeacherFormChange}
+                  className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20"
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="mb-1 block text-sm font-medium text-slate-700">
+                  Subject
+                </label>
+                <input
+                  type="text"
+                  name="subject"
+                  value={teacherForm.subject}
+                  onChange={handleTeacherFormChange}
+                  className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20"
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="mb-1 block text-sm font-medium text-slate-700">
+                  Password
+                </label>
+                <input
+                  type="text"
+                  value={teacherForm.password}
+                  className="w-full rounded-md border border-slate-200 bg-slate-100 px-3 py-2 text-sm text-slate-600"
+                  disabled
+                  readOnly
+                />
+              </div>
+
+              <div className="flex justify-end gap-3 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setTeacherModalOpen(false)}
+                  className="rounded-md border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={isCreatingTeacher}
+                  className="rounded-md bg-blue-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-70"
+                >
+                  {isCreatingTeacher ? "Creating..." : "Create Teacher"}
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}

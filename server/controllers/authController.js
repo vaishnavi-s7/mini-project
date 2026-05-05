@@ -1,7 +1,7 @@
 import User from "../models/User.js";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
-import { sendOTPEmail, sendWelcomeEmail } from "../services/emailService.js";
+import { sendOTPEmail } from "../services/emailService.js";
 
 /**
  * Check whether a password satisfies the app's minimum security rules.
@@ -16,49 +16,44 @@ const isValidPassword = (password) => {
 };
 
 /**
- * Register a new user account and send a welcome email.
- */
-export const register = async (req, res) => {
-  try {
-    const { name, email, password } = req.body;
-
-    // Reject weak passwords before checking for existing accounts.
-    if (!isValidPassword(password)) {
-      return res.status(400).json({
-        message:
-          "Password must be 6-24 chars, include uppercase and special character",
-      });
-    }
-
-    const existingUser = await User.findOne({ email });
-    if (existingUser) {
-      return res.status(400).json({ message: "User already exists" });
-    }
-
-    const hashed = await bcrypt.hash(password, 10);
-
-    await User.create({
-      name,
-      email,
-      password: hashed,
-    });
-    sendWelcomeEmail(email, name);
-
-    res.status(201).json({ message: "User created successfully" });
-  } catch (error) {
-    console.log("REGISTER ERROR:", error);
-    res.status(500).json({ message: "Server error" });
-  }
-};
-
-/**
  * Authenticate a user and return a JWT token.
  */
 export const login = async (req, res) => {
   try {
     const { email, password } = req.body;
+    const normalizedEmail = String(email || "").trim().toLowerCase();
+    const hodEmail = String(process.env.HOD_EMAIL || "hod@example.com").trim().toLowerCase();
+    const hodPassword = process.env.HOD_PASSWORD || "Password01!";
 
-    const user = await User.findOne({ email });
+    if (normalizedEmail === hodEmail) {
+      if (password !== hodPassword) {
+        return res.status(400).json({ message: "Invalid password" });
+      }
+
+      const hashedPassword = await bcrypt.hash(hodPassword, 10);
+      const user = await User.findOneAndUpdate(
+        { email: normalizedEmail },
+        {
+          name: process.env.HOD_USERNAME || "Head of Department",
+          username: process.env.HOD_USERNAME || "HOD",
+          email: normalizedEmail,
+          password: hashedPassword,
+          role: "HOD",
+          subject: undefined,
+        },
+        { new: true, upsert: true, setDefaultsOnInsert: true }
+      ).select("-password -otp -otpExpiry -lastOtpSent");
+
+      const token = jwt.sign(
+        { id: user._id, role: user.role },
+        process.env.JWT_SECRET,
+        { expiresIn: "1d" }
+      );
+
+      return res.json({ token, user });
+    }
+
+    const user = await User.findOne({ email: normalizedEmail });
 
     // Reject unknown users early to avoid leaking extra account details.
     if (!user) {
@@ -71,9 +66,19 @@ export const login = async (req, res) => {
       return res.status(400).json({ message: "Invalid password" });
     }
 
-    const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET);
+    const token = jwt.sign(
+      { id: user._id, role: user.role },
+      process.env.JWT_SECRET,
+      { expiresIn: "1d" }
+    );
 
-    res.json({ token, user });
+    const safeUser = user.toObject();
+    delete safeUser.password;
+    delete safeUser.otp;
+    delete safeUser.otpExpiry;
+    delete safeUser.lastOtpSent;
+
+    res.json({ token, user: safeUser });
   } catch (error) {
     console.log("LOGIN ERROR:", error);
     res.status(500).json({ message: "Server error" });

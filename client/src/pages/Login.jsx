@@ -28,31 +28,26 @@ export default function Login() {
       localStorage.setItem("user", JSON.stringify(res.data.user));
 
       toast.success("Login successful");
-      navigate("/");
+      navigate(res.data.user?.role === "HOD" ? "/" : "/");
     } catch (err) {
-      console.log("FULL ERROR 👉", err);
-      console.log("RESPONSE 👉", err.response);
+      console.log("FULL ERROR", err);
+      console.log("RESPONSE", err.response);
 
       let message = "";
 
-      // 👇 SAFE extraction
       if (err.response && err.response.data) {
         message = err.response.data.message;
       }
 
-      // 👇 fallback (VERY IMPORTANT)
       if (!message) {
         message = err.message;
       }
 
-      // 👇 now handle properly
       if (message === "User not found") {
-        toast.error("User not registered. Please register and login.");
-      }
-      else if (message === "Invalid password") {
+        toast.error("Account not found.");
+      } else if (message === "Invalid password") {
         toast.error("Wrong password. Enter valid password to login.");
-      }
-      else {
+      } else {
         toast.error(message || "Login failed");
       }
     }
@@ -60,20 +55,13 @@ export default function Login() {
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-800 to-gray-600 px-4">
-
       <div className="bg-white w-full max-w-lg p-10 rounded-2xl shadow-2xl">
-
-        {/* TITLE */}
         <h2 className="text-3xl font-bold text-center text-gray-800 mb-2">
           Welcome Back
         </h2>
-        <p className="text-center text-gray-500 mb-8">
-          Login to continue managing your CSV data
-        </p>
+        <p className="text-center text-gray-500 mb-8">Login to continue</p>
 
-        {/* FORM */}
         <form onSubmit={handleSubmit} className="space-y-5">
-
           <input
             type="email"
             name="email"
@@ -102,15 +90,6 @@ export default function Login() {
             Login
           </button>
         </form>
-
-        {/* FOOTER */}
-        <p className="text-center mt-6 text-sm text-gray-600">
-          Don’t have an account?{" "}
-          <Link to="/register" className="text-gray-900 font-medium hover:underline">
-            Register
-          </Link>
-        </p>
-
       </div>
     </div>
   );

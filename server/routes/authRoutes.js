@@ -1,6 +1,5 @@
 import express from "express";
 import {
-  register,
   login,
   forgotPassword,
   resetPassword,
@@ -15,9 +14,8 @@ import { protect } from "../middleware/authMiddleware.js";
 const router = express.Router();
 
 /**
- * Authentication routes for registration and login.
+ * Authentication route. Account creation is handled by HOD-only APIs.
  */
-router.post("/register", register);
 router.post("/login", login);
 
 /**
