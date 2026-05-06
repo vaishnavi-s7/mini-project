@@ -38,6 +38,14 @@ const subjectSchema = new mongoose.Schema(
   { timestamps: true }
 );
  
+subjectSchema.index(
+  { subject_name: 1 },
+  { unique: true, collation: { locale: "en", strength: 2 } }
+);
+subjectSchema.index({ subject_code: 1 }, { unique: true });
+ 
 export default mongoose.model("Subject", subjectSchema);
+ 
+ 
  
  

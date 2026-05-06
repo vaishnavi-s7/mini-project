@@ -97,7 +97,7 @@ export const getSubjects = async (_req, res) => {
       buildSubjectId,
       "subject_id"
     );
-
+ 
     res.json({
       success: true,
       data: subjects,
@@ -171,12 +171,19 @@ export const updateSubject = async (req, res) => {
     });
   } catch (error) {
     console.log("UPDATE SUBJECT ERROR:", error);
+ 
+    if (error.code === 11000) {
+      return res.status(409).json({
+        message: "Subject name already exists",
+      });
+    }
+ 
     res.status(500).json({
       message: "Failed to update subject",
     });
   }
 };
-
+ 
 /**
  * Delete a subject and cascade its dependent courses and lessons.
  */
@@ -184,24 +191,24 @@ export const deleteSubject = async (req, res) => {
   try {
     const { id } = req.params;
     const subject = await Subject.findById(id);
-
+ 
     // Return 404 when the subject cannot be located.
     if (!subject) {
       return res.status(404).json({
         message: "Subject not found",
       });
     }
-
+ 
     const courses = await Course.find({ subject: id }).select("_id");
     const courseIds = courses.map((course) => course._id);
-
+ 
     if (courseIds.length > 0) {
       await Lesson.deleteMany({ course: { $in: courseIds } });
       await Course.deleteMany({ subject: id });
     }
-
+ 
     await Subject.findByIdAndDelete(id);
-
+ 
     await resequenceDocuments(Subject, buildSubjectId, "subject_id");
     await resequenceDocuments(
       Course,
@@ -213,7 +220,7 @@ export const deleteSubject = async (req, res) => {
       (sequenceNumber) => `LES${String(sequenceNumber).padStart(3, "0")}`,
       "lesson_id"
     );
-
+ 
     res.json({
       message: "Subject deleted successfully",
     });
@@ -224,5 +231,7 @@ export const deleteSubject = async (req, res) => {
     });
   }
 };
+ 
+ 
  
  

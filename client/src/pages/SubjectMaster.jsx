@@ -46,6 +46,8 @@ const SUBJECT_CSV_CONFIG = {
   ],
 };
  
+const normalizeSubjectValue = (value) => value.trim().toLowerCase();
+ 
 /**
  * Render the subject management screen.
  */
@@ -72,13 +74,33 @@ export default function SubjectMaster() {
  
   const validateForm = () => {
     const nextErrors = {};
+    const subjectName = form.subject_name.trim();
+    const subjectCode = form.subject_code.trim().toUpperCase();
  
-    if (!form.subject_name.trim()) {
+    if (!subjectName) {
       nextErrors.subject_name = "Subject name is required";
     }
  
-    if (!form.subject_code.trim()) {
+    if (!subjectCode) {
       nextErrors.subject_code = "Subject code is required";
+    }
+ 
+    if (
+      subjectName &&
+      subjects.some(
+        (subject) =>
+          normalizeSubjectValue(subject.subject_name || "") ===
+          normalizeSubjectValue(subjectName)
+      )
+    ) {
+      nextErrors.subject_name = "Subject name already exists";
+    }
+ 
+    if (
+      subjectCode &&
+      subjects.some((subject) => subject.subject_code === subjectCode)
+    ) {
+      nextErrors.subject_code = "Subject code already exists";
     }
  
     setErrors(nextErrors);
@@ -101,68 +123,68 @@ export default function SubjectMaster() {
   useEffect(() => {
     loadSubjects();
   }, []);
-
+ 
   const resetBulkFileInput = () => {
     if (fileInputRef.current) {
       fileInputRef.current.value = "";
     }
   };
-
+ 
   const clearBulkSelection = () => {
     setBulkFile(null);
     setBulkPreviewData([]);
     setBulkResult(null);
     resetBulkFileInput();
   };
-
+ 
   const closeBulkModal = () => {
     setIsBulkOpen(false);
     clearBulkSelection();
   };
-
+ 
   const validateSubjectCsvHeaders = (headers) => {
     const normalized = headers.map((header) => header.trim().toLowerCase());
-
+ 
     return (
       normalized.length === SUBJECT_CSV_CONFIG.headers.length &&
       JSON.stringify(normalized) === JSON.stringify(SUBJECT_CSV_CONFIG.headers)
     );
   };
-
+ 
   const handleBulkFileChange = (event) => {
     const selectedFile = event.target.files[0];
-
+ 
     if (!selectedFile) {
       return;
     }
-
+ 
     const reader = new FileReader();
-
+ 
     reader.onload = (readerEvent) => {
       const text = readerEvent.target.result || "";
       const firstLine = text.split(/\r?\n/)[0].trim();
       const headers = firstLine.split(",");
-
+ 
       if (!validateSubjectCsvHeaders(headers)) {
         toast.error("Fields not matching for subject. Check the columns and reupload.");
         clearBulkSelection();
         return;
       }
-
+ 
       setBulkFile(selectedFile);
       setBulkPreviewData([]);
       setBulkResult(null);
     };
-
+ 
     reader.readAsText(selectedFile);
   };
-
+ 
   const handleBulkPreview = () => {
     if (!bulkFile) {
       toast.error("Please select a CSV file first");
       return;
     }
-
+ 
     Papa.parse(bulkFile, {
       header: true,
       skipEmptyLines: true,
@@ -171,21 +193,21 @@ export default function SubjectMaster() {
       },
     });
   };
-
+ 
   const handleBulkUpload = async () => {
     if (!bulkFile) {
       toast.error("Please select a CSV file first");
       return;
     }
-
+ 
     const formData = new FormData();
     formData.append("file", bulkFile);
     formData.append("type", "subject");
-
+ 
     try {
       setIsBulkUploading(true);
       const res = await uploadCSV(formData);
-
+ 
       setBulkResult(res.data);
       toast.success(`${res.data.inserted} subject(s) uploaded successfully`);
       await loadSubjects();
@@ -201,17 +223,17 @@ export default function SubjectMaster() {
       setIsBulkUploading(false);
     }
   };
-
+ 
   const downloadSubjectTemplate = () => {
     const csvContent =
       "data:text/csv;charset=utf-8," +
       SUBJECT_CSV_CONFIG.headers.join(",") +
       "\n" +
       SUBJECT_CSV_CONFIG.sample;
-
+ 
     const encodedUri = encodeURI(csvContent);
     const link = document.createElement("a");
-
+ 
     link.setAttribute("href", encodedUri);
     link.setAttribute("download", "subject_template.csv");
     document.body.appendChild(link);
@@ -315,9 +337,22 @@ export default function SubjectMaster() {
  
   const validateEditForm = () => {
     const nextErrors = {};
+    const subjectName = editForm.subject_name.trim();
  
-    if (!editForm.subject_name.trim()) {
+    if (!subjectName) {
       nextErrors.subject_name = "Subject name is required";
+    }
+ 
+    if (
+      subjectName &&
+      subjects.some(
+        (subject) =>
+          subject._id !== editForm.id &&
+          normalizeSubjectValue(subject.subject_name || "") ===
+            normalizeSubjectValue(subjectName)
+      )
+    ) {
+      nextErrors.subject_name = "Subject name already exists";
     }
  
     if (!["Active", "Inactive"].includes(editForm.status)) {
@@ -359,12 +394,12 @@ export default function SubjectMaster() {
       setIsUpdating(false);
     }
   };
-
+ 
   const handleDeleteSubject = async (subject) => {
     if (!subject) {
       return;
     }
-
+ 
     try {
       setDeletingId(subject._id);
       const res = await deleteSubject(subject._id);
@@ -382,7 +417,7 @@ export default function SubjectMaster() {
     <div className="space-y-8">
       {/* <section className="rounded-3xl bg-gradient-to-r from-slate-900 via-blue-900 to-slate-800 p-8 text-white shadow-xl">
         <h1 className="mt-3 text-3xl font-bold sm:text-4xl">
-          Subject 
+          Subject
         </h1>
        
         <div className="mt-6 grid gap-4 sm:grid-cols-3">
@@ -759,7 +794,7 @@ export default function SubjectMaster() {
           </div>
         </div>
       )}
-
+ 
       {previewIcon && (
         <div
           className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/50 px-4"
@@ -789,7 +824,7 @@ export default function SubjectMaster() {
           </div>
         </div>
       )}
-
+ 
       {isBulkOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/50 px-4">
           <div
@@ -815,7 +850,7 @@ export default function SubjectMaster() {
                 <X size={18} />
               </button>
             </div>
-
+ 
             <div className="flex-1 overflow-y-auto px-6 py-5">
               <div className="rounded-2xl border-2 border-dashed border-slate-300 bg-slate-50 p-6 text-center transition hover:border-blue-500">
                 <CloudUpload className="mx-auto mb-3 h-9 w-9 text-blue-900" />
@@ -836,7 +871,7 @@ export default function SubjectMaster() {
                   </p>
                 )}
               </div>
-
+ 
               <div className="mt-4 flex flex-wrap justify-center gap-3">
                 <button
                   type="button"
@@ -864,11 +899,11 @@ export default function SubjectMaster() {
                   {isBulkUploading ? "Uploading..." : "Upload"}
                 </button>
               </div>
-
+ 
               <p className="mt-3 text-center text-xs text-slate-500">
                 Do not modify the header row. Only fill data from row 2 onwards.
               </p>
-
+ 
               <div className="mt-5 rounded-2xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-700">
                 <h4 className="mb-2 font-semibold text-slate-900">
                   Subject Requirements
@@ -881,7 +916,7 @@ export default function SubjectMaster() {
                   ))}
                 </ul>
               </div>
-
+ 
               {bulkPreviewData.length > 0 && (
                 <div className="mt-6">
                   <h4 className="mb-3 text-lg font-semibold text-slate-900">
@@ -913,7 +948,7 @@ export default function SubjectMaster() {
                   </div>
                 </div>
               )}
-
+ 
               {bulkResult && (
                 <div className="mt-6 rounded-2xl border border-slate-200 bg-white p-4">
                   <h4 className="mb-3 text-lg font-semibold text-slate-900">
@@ -962,7 +997,7 @@ export default function SubjectMaster() {
           </div>
         </div>
       )}
-
+ 
       <ConfirmModal
         open={Boolean(deleteTarget)}
         title="Delete Subject"
@@ -980,6 +1015,8 @@ export default function SubjectMaster() {
     </div>
   );
 }
+ 
+ 
  
  
  
