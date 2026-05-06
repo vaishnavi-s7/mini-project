@@ -1,5 +1,15 @@
-import { useEffect, useMemo, useState } from "react";
-import { ChevronLeft, ChevronRight, Pencil, Trash2 } from "lucide-react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import {
+  ChevronLeft,
+  ChevronRight,
+  CloudUpload,
+  Download,
+  Eye,
+  Pencil,
+  Trash2,
+  X,
+} from "lucide-react";
+import Papa from "papaparse";
 import toast from "react-hot-toast";
 import {
   createSubject,
@@ -7,6 +17,7 @@ import {
   getSubjects,
   updateSubject,
 } from "../services/subjectService";
+import { uploadCSV } from "../services/dataService";
 import { getLocalSubjectIcon } from "../utils/subjectIcons";
 import ConfirmModal from "../components/common/ConfirmModal";
 import DescriptionPreview from "../components/common/DescriptionPreview";
@@ -25,11 +36,21 @@ const initialEditForm = {
 };
  
 const PAGE_SIZE = 3;
+const SUBJECT_CSV_CONFIG = {
+  headers: ["subject_name", "subject_code", "description"],
+  sample: "Math,MATH,Basic subject",
+  requirements: [
+    ["subject_name", "is required"],
+    ["subject_code", "is required"],
+    ["description", "is optional"],
+  ],
+};
  
 /**
  * Render the subject management screen.
  */
 export default function SubjectMaster() {
+  const fileInputRef = useRef(null);
   const [form, setForm] = useState(initialForm);
   const [errors, setErrors] = useState({});
   const [subjects, setSubjects] = useState([]);
@@ -43,6 +64,11 @@ export default function SubjectMaster() {
   const [currentPage, setCurrentPage] = useState(1);
   const [deletingId, setDeletingId] = useState("");
   const [deleteTarget, setDeleteTarget] = useState(null);
+  const [isBulkOpen, setIsBulkOpen] = useState(false);
+  const [bulkFile, setBulkFile] = useState(null);
+  const [bulkPreviewData, setBulkPreviewData] = useState([]);
+  const [bulkResult, setBulkResult] = useState(null);
+  const [isBulkUploading, setIsBulkUploading] = useState(false);
  
   const validateForm = () => {
     const nextErrors = {};
@@ -75,6 +101,123 @@ export default function SubjectMaster() {
   useEffect(() => {
     loadSubjects();
   }, []);
+
+  const resetBulkFileInput = () => {
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
+    }
+  };
+
+  const clearBulkSelection = () => {
+    setBulkFile(null);
+    setBulkPreviewData([]);
+    setBulkResult(null);
+    resetBulkFileInput();
+  };
+
+  const closeBulkModal = () => {
+    setIsBulkOpen(false);
+    clearBulkSelection();
+  };
+
+  const validateSubjectCsvHeaders = (headers) => {
+    const normalized = headers.map((header) => header.trim().toLowerCase());
+
+    return (
+      normalized.length === SUBJECT_CSV_CONFIG.headers.length &&
+      JSON.stringify(normalized) === JSON.stringify(SUBJECT_CSV_CONFIG.headers)
+    );
+  };
+
+  const handleBulkFileChange = (event) => {
+    const selectedFile = event.target.files[0];
+
+    if (!selectedFile) {
+      return;
+    }
+
+    const reader = new FileReader();
+
+    reader.onload = (readerEvent) => {
+      const text = readerEvent.target.result || "";
+      const firstLine = text.split(/\r?\n/)[0].trim();
+      const headers = firstLine.split(",");
+
+      if (!validateSubjectCsvHeaders(headers)) {
+        toast.error("Fields not matching for subject. Check the columns and reupload.");
+        clearBulkSelection();
+        return;
+      }
+
+      setBulkFile(selectedFile);
+      setBulkPreviewData([]);
+      setBulkResult(null);
+    };
+
+    reader.readAsText(selectedFile);
+  };
+
+  const handleBulkPreview = () => {
+    if (!bulkFile) {
+      toast.error("Please select a CSV file first");
+      return;
+    }
+
+    Papa.parse(bulkFile, {
+      header: true,
+      skipEmptyLines: true,
+      complete: (results) => {
+        setBulkPreviewData(results.data);
+      },
+    });
+  };
+
+  const handleBulkUpload = async () => {
+    if (!bulkFile) {
+      toast.error("Please select a CSV file first");
+      return;
+    }
+
+    const formData = new FormData();
+    formData.append("file", bulkFile);
+    formData.append("type", "subject");
+
+    try {
+      setIsBulkUploading(true);
+      const res = await uploadCSV(formData);
+
+      setBulkResult(res.data);
+      toast.success(`${res.data.inserted} subject(s) uploaded successfully`);
+      await loadSubjects();
+      setBulkFile(null);
+      setBulkPreviewData([]);
+      resetBulkFileInput();
+    } catch (error) {
+      toast.error(
+        error.response?.data?.message ||
+          "Upload failed. Please check your CSV format."
+      );
+    } finally {
+      setIsBulkUploading(false);
+    }
+  };
+
+  const downloadSubjectTemplate = () => {
+    const csvContent =
+      "data:text/csv;charset=utf-8," +
+      SUBJECT_CSV_CONFIG.headers.join(",") +
+      "\n" +
+      SUBJECT_CSV_CONFIG.sample;
+
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement("a");
+
+    link.setAttribute("href", encodedUri);
+    link.setAttribute("download", "subject_template.csv");
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
  
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -127,11 +270,6 @@ export default function SubjectMaster() {
       setIsSaving(false);
     }
   };
- 
-  const activeCount = useMemo(
-    () => subjects.filter((subject) => subject.status === "Active").length,
-    [subjects]
-  );
  
   const totalPages = Math.max(1, Math.ceil(subjects.length / PAGE_SIZE));
  
@@ -265,8 +403,17 @@ export default function SubjectMaster() {
  
       <section className="grid gap-8 lg:grid-cols-[1.1fr,0.9fr]">
         <div className="rounded-3xl bg-white p-6 shadow-lg sm:p-8">
-          <div className="mb-6">
+          <div className="mb-6 flex items-center justify-between gap-4">
             <h2 className="text-2xl font-bold text-slate-900">New Subject</h2>
+            <button
+              type="button"
+              onClick={() => setIsBulkOpen(true)}
+              className="inline-flex h-11 w-11 items-center justify-center rounded-full border border-blue-100 bg-blue-50 text-blue-900 transition hover:bg-blue-100"
+              aria-label="Bulk upload subjects"
+              title="Bulk upload subjects"
+            >
+              <CloudUpload size={22} strokeWidth={2.25} />
+            </button>
           </div>
  
           <form onSubmit={handleSubmit} className="space-y-5">
@@ -639,6 +786,179 @@ export default function SubjectMaster() {
               alt={previewIcon.alt}
               className="h-64 w-64 object-contain"
             />
+          </div>
+        </div>
+      )}
+
+      {isBulkOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/50 px-4">
+          <div
+            className="flex w-full max-w-3xl flex-col rounded-3xl bg-white shadow-2xl"
+            style={{ maxHeight: "88vh" }}
+          >
+            <div className="flex items-start justify-between gap-4 border-b border-slate-100 px-6 pb-4 pt-6">
+              <div>
+                <h3 className="text-xl font-bold text-slate-900">
+                  Bulk Upload Subjects
+                </h3>
+                <p className="mt-1 text-sm text-slate-500">
+                  Upload a CSV with subject name, code, and optional description.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={closeBulkModal}
+                className="inline-flex h-9 w-9 items-center justify-center rounded-full text-slate-500 transition hover:bg-slate-100 hover:text-slate-900"
+                aria-label="Close subject upload"
+                title="Close"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            <div className="flex-1 overflow-y-auto px-6 py-5">
+              <div className="rounded-2xl border-2 border-dashed border-slate-300 bg-slate-50 p-6 text-center transition hover:border-blue-500">
+                <CloudUpload className="mx-auto mb-3 h-9 w-9 text-blue-900" />
+                <p className="font-semibold text-slate-700">
+                  Drag and drop your subject CSV file here
+                </p>
+                <p className="mb-4 mt-1 text-sm text-slate-400">or</p>
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept=".csv"
+                  onChange={handleBulkFileChange}
+                  className="block w-full text-sm text-slate-500 file:mr-4 file:rounded-lg file:border-0 file:bg-blue-100 file:px-4 file:py-2 file:text-sm file:font-semibold file:text-blue-700 hover:file:bg-blue-200"
+                />
+                {bulkFile && (
+                  <p className="mt-3 text-sm font-medium text-emerald-600">
+                    Selected: {bulkFile.name}
+                  </p>
+                )}
+              </div>
+
+              <div className="mt-4 flex flex-wrap justify-center gap-3">
+                <button
+                  type="button"
+                  onClick={downloadSubjectTemplate}
+                  className="inline-flex items-center gap-2 rounded-xl bg-blue-100 px-4 py-2 text-sm font-semibold text-blue-900 transition hover:bg-blue-200"
+                >
+                  <Download size={16} />
+                  Template
+                </button>
+                <button
+                  type="button"
+                  onClick={handleBulkPreview}
+                  className="inline-flex items-center gap-2 rounded-xl bg-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-300"
+                >
+                  <Eye size={16} />
+                  Preview
+                </button>
+                <button
+                  type="button"
+                  onClick={handleBulkUpload}
+                  disabled={isBulkUploading}
+                  className="inline-flex items-center gap-2 rounded-xl bg-blue-900 px-4 py-2 text-sm font-semibold text-white transition hover:bg-blue-800 disabled:cursor-not-allowed disabled:bg-blue-300"
+                >
+                  <CloudUpload size={16} />
+                  {isBulkUploading ? "Uploading..." : "Upload"}
+                </button>
+              </div>
+
+              <p className="mt-3 text-center text-xs text-slate-500">
+                Do not modify the header row. Only fill data from row 2 onwards.
+              </p>
+
+              <div className="mt-5 rounded-2xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-700">
+                <h4 className="mb-2 font-semibold text-slate-900">
+                  Subject Requirements
+                </h4>
+                <ul className="list-inside list-disc space-y-1">
+                  {SUBJECT_CSV_CONFIG.requirements.map(([field, requirement]) => (
+                    <li key={field}>
+                      <strong>{field}</strong> - {requirement}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+
+              {bulkPreviewData.length > 0 && (
+                <div className="mt-6">
+                  <h4 className="mb-3 text-lg font-semibold text-slate-900">
+                    CSV Preview
+                  </h4>
+                  <div className="overflow-x-auto">
+                    <table className="min-w-full overflow-hidden rounded-2xl border border-slate-200 text-sm">
+                      <thead className="bg-slate-100 text-left text-slate-700">
+                        <tr>
+                          {Object.keys(bulkPreviewData[0]).map((key) => (
+                            <th key={key} className="px-4 py-3">
+                              {key}
+                            </th>
+                          ))}
+                        </tr>
+                      </thead>
+                      <tbody className="text-slate-700">
+                        {bulkPreviewData.map((row, index) => (
+                          <tr key={index} className="border-t border-slate-200">
+                            {Object.values(row).map((value, cellIndex) => (
+                              <td key={cellIndex} className="px-4 py-3">
+                                {value}
+                              </td>
+                            ))}
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
+
+              {bulkResult && (
+                <div className="mt-6 rounded-2xl border border-slate-200 bg-white p-4">
+                  <h4 className="mb-3 text-lg font-semibold text-slate-900">
+                    Upload Summary
+                  </h4>
+                  <div className="flex flex-wrap gap-3 text-sm">
+                    <span className="rounded-full bg-emerald-100 px-3 py-1 font-semibold text-emerald-700">
+                      Inserted: {bulkResult.inserted}
+                    </span>
+                    <span className="rounded-full bg-amber-100 px-3 py-1 font-semibold text-amber-700">
+                      Duplicates: {bulkResult.duplicates}
+                    </span>
+                    <span className="rounded-full bg-red-100 px-3 py-1 font-semibold text-red-700">
+                      Errors: {bulkResult.errors?.length || 0}
+                    </span>
+                  </div>
+                  {bulkResult.errors?.length > 0 && (
+                    <div className="mt-4 overflow-x-auto">
+                      <table className="min-w-full rounded-2xl border border-slate-200 text-sm">
+                        <thead className="bg-slate-100">
+                          <tr>
+                            <th className="border border-slate-200 p-2">Row</th>
+                            <th className="border border-slate-200 p-2">
+                              Errors
+                            </th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {bulkResult.errors.map((error, index) => (
+                            <tr key={index}>
+                              <td className="border border-slate-200 p-2 text-center">
+                                {error.row}
+                              </td>
+                              <td className="border border-slate-200 p-2">
+                                {error.errors.join(", ")}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
           </div>
         </div>
       )}

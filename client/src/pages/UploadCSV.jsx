@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useMemo, useState, useRef } from "react";
 import { uploadCSV } from "../services/dataService";
 import Papa from "papaparse";
 import ProtectedWrapper from "../components/common/ProtectedWrapper";
@@ -50,6 +50,21 @@ const CSV_CONFIGS = {
  * Render the CSV upload workflow.
  */
 export default function UploadCSV() {
+  const currentUser = useMemo(
+    () => JSON.parse(localStorage.getItem("user") || "null"),
+    []
+  );
+  const availableCsvConfigs = useMemo(() => {
+    if (currentUser?.role === "TEACHER") {
+      return {
+        student: CSV_CONFIGS.student,
+        course: CSV_CONFIGS.course,
+        lesson: CSV_CONFIGS.lesson,
+      };
+    }
+
+    return CSV_CONFIGS;
+  }, [currentUser?.role]);
 
   const [file, setFile] = useState(null);
   const [previewData, setPreviewData] = useState([]);
@@ -58,7 +73,7 @@ export default function UploadCSV() {
   const [showModal, setShowModal] = useState(false);
   const [type, setType] = useState("student");
 
-  const activeConfig = CSV_CONFIGS[type];
+  const activeConfig = availableCsvConfigs[type] || availableCsvConfigs.student;
 
   const resetFileInput = () => {
     if (fileInputRef.current) {
@@ -226,7 +241,7 @@ export default function UploadCSV() {
           </h2>
 
           <div className="flex justify-center gap-2 mb-4 flex-wrap">
-            {Object.keys(CSV_CONFIGS).map((csvType) => (
+            {Object.keys(availableCsvConfigs).map((csvType) => (
               <button
                 key={csvType}
                 onClick={() => {

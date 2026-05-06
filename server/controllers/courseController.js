@@ -2,6 +2,7 @@ import Course from "../models/Course.js";
 import Subject from "../models/Subject.js";
 import Lesson from "../models/Lesson.js";
 import { resequenceDocuments } from "../utils/resequenceDocuments.js";
+import { ensureCanManageSubject } from "../utils/teacherSubjectAccess.js";
 
 const buildCourseId = (sequenceNumber) =>
   `CRS${String(sequenceNumber).padStart(3, "0")}`;
@@ -36,6 +37,12 @@ export const createCourse = async (req, res) => {
       return res.status(404).json({
         message: "Selected subject not found",
       });
+    }
+
+    const access = await ensureCanManageSubject(req, existingSubject, "courses");
+
+    if (!access.allowed) {
+      return res.status(access.status).json({ message: access.message });
     }
 
     const trimmedName = course_name.trim();
@@ -153,6 +160,33 @@ export const updateCourse = async (req, res) => {
       });
     }
 
+    const existingCourse = await Course.findById(id).populate(
+      "subject",
+      "subject_name subject_code"
+    );
+
+    if (!existingCourse) {
+      return res.status(404).json({
+        message: "Course not found",
+      });
+    }
+
+    const currentAccess = await ensureCanManageSubject(
+      req,
+      existingCourse.subject,
+      "courses"
+    );
+
+    if (!currentAccess.allowed) {
+      return res.status(currentAccess.status).json({ message: currentAccess.message });
+    }
+
+    const access = await ensureCanManageSubject(req, existingSubject, "courses");
+
+    if (!access.allowed) {
+      return res.status(access.status).json({ message: access.message });
+    }
+
     const trimmedName = course_name.trim();
     const trimmedDescription = description?.trim() || "";
 
@@ -207,13 +241,22 @@ export const updateCourse = async (req, res) => {
 export const deleteCourse = async (req, res) => {
   try {
     const { id } = req.params;
-    const course = await Course.findById(id);
+    const course = await Course.findById(id).populate(
+      "subject",
+      "subject_name subject_code"
+    );
 
     // Return 404 when there is no course to delete.
     if (!course) {
       return res.status(404).json({
         message: "Course not found",
       });
+    }
+
+    const access = await ensureCanManageSubject(req, course.subject, "courses");
+
+    if (!access.allowed) {
+      return res.status(access.status).json({ message: access.message });
     }
 
     await Lesson.deleteMany({ course: id });

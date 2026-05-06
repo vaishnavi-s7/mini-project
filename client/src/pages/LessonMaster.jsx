@@ -47,10 +47,35 @@ const PAGE_SIZE = 3;
 
 const EMPTY_BANK = () => ({ title: "", content: "" });
 
+const normalizeValue = (value) => String(value || "").trim().toLowerCase();
+
+const canTeacherManageCourse = (user, course) => {
+    if (user?.role !== "TEACHER") {
+        return true;
+    }
+
+    const assignedSubject = normalizeValue(user.subject);
+    const subject = course?.subject;
+
+    return (
+        assignedSubject &&
+        (assignedSubject === normalizeValue(subject?.subject_name) ||
+            assignedSubject === normalizeValue(subject?.subject_code))
+    );
+};
+
+const showCourseAccessError = () => {
+    toast.error("You have not registered for this subject");
+};
+
 /**
  * Render the lesson management screen.
  */
 export default function LessonMaster() {
+    const currentUser = useMemo(
+        () => JSON.parse(localStorage.getItem("user") || "null"),
+        []
+    );
     const [form, setForm] = useState(initialForm);
     const [errors, setErrors] = useState({});
     const [courses, setCourses] = useState([]);
@@ -142,6 +167,13 @@ export default function LessonMaster() {
 
     const handleCourseSelectChange = (e) => {
         const { value } = e.target;
+        const selected = courses.find((course) => course._id === value);
+
+        if (!canTeacherManageCourse(currentUser, selected)) {
+            showCourseAccessError(currentUser, selected, "lessons");
+            return;
+        }
+
         setForm((prev) => ({ ...prev, course: value }));
         setErrors((prev) => ({ ...prev, course: "" }));
     };
@@ -150,6 +182,13 @@ export default function LessonMaster() {
         e.preventDefault();
         if (!validateForm()) {
             toast.error("Please fill all required fields");
+            return;
+        }
+
+        const selected = courses.find((course) => course._id === form.course);
+
+        if (!canTeacherManageCourse(currentUser, selected)) {
+            showCourseAccessError(currentUser, selected, "lessons");
             return;
         }
 
@@ -255,7 +294,7 @@ export default function LessonMaster() {
                     course.course_code.toLowerCase().startsWith(normalizedSearch)
             )
             .slice(0, 8);
-    }, [courseSearchTerm, courses]);
+    }, [activeCourses, courseSearchTerm]);
 
     const editableCourses = useMemo(() => {
         const currentCourse = courses.find((course) => course._id === editForm.course);
@@ -286,6 +325,11 @@ export default function LessonMaster() {
     useEffect(() => { setCurrentPage((prev) => Math.min(prev, totalPages)); }, [totalPages]);
 
     const openEditModal = (lesson) => {
+        if (!canTeacherManageCourse(currentUser, lesson?.course)) {
+            showCourseAccessError(currentUser, lesson?.course, "lessons");
+            return;
+        }
+
         setEditForm({
             id: lesson._id,
             lesson_title: lesson.lesson_title,
@@ -309,6 +353,15 @@ export default function LessonMaster() {
 
     const handleEditChange = (e) => {
         const { name, value } = e.target;
+        const selected = name === "course"
+            ? courses.find((course) => course._id === value)
+            : null;
+
+        if (name === "course" && !canTeacherManageCourse(currentUser, selected)) {
+            showCourseAccessError(currentUser, selected, "lessons");
+            return;
+        }
+
         setEditForm((prev) => ({ ...prev, [name]: value }));
         setEditErrors((prev) => ({ ...prev, [name]: "" }));
     };
@@ -326,6 +379,13 @@ export default function LessonMaster() {
         e.preventDefault();
         if (!validateEditForm()) {
             toast.error("Please complete all required edit fields");
+            return;
+        }
+
+        const selected = courses.find((course) => course._id === editForm.course);
+
+        if (!canTeacherManageCourse(currentUser, selected)) {
+            showCourseAccessError(currentUser, selected, "lessons");
             return;
         }
 
@@ -374,6 +434,12 @@ export default function LessonMaster() {
             return;
         }
 
+        if (!canTeacherManageCourse(currentUser, lesson?.course)) {
+            showCourseAccessError(currentUser, lesson?.course, "lessons");
+            setDeleteTarget(null);
+            return;
+        }
+
         try {
             setDeletingId(lesson._id);
             const res = await deleteLesson(lesson._id);
@@ -389,6 +455,11 @@ export default function LessonMaster() {
 
     // ── Question Bank handlers ───────────────────────────────────────────────
     const openQuestionModal = (lesson) => {
+        if (!canTeacherManageCourse(currentUser, lesson?.course)) {
+            showCourseAccessError(currentUser, lesson?.course, "lessons");
+            return;
+        }
+
         setQuestionModalLesson(lesson);
         const existingBanks = Array.isArray(lesson?.question_bank) ? lesson.question_bank : [];
         setQuestionBanks(

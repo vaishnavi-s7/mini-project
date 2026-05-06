@@ -29,6 +29,26 @@ const initialEditForm = {
  
 const PAGE_SIZE = 3;
 const API_ORIGIN = "http://localhost:5000";
+
+const normalizeValue = (value) => String(value || "").trim().toLowerCase();
+
+const canTeacherManageSubject = (user, subject) => {
+  if (user?.role !== "TEACHER") {
+    return true;
+  }
+
+  const assignedSubject = normalizeValue(user.subject);
+
+  return (
+    assignedSubject &&
+    (assignedSubject === normalizeValue(subject?.subject_name) ||
+      assignedSubject === normalizeValue(subject?.subject_code))
+  );
+};
+
+const showSubjectAccessError = () => {
+  toast.error("You have not registered for this subject");
+};
  
 const getSubjectIconUrl = (iconPath) =>
   iconPath
@@ -64,13 +84,17 @@ function SubjectOptionRow({ subject }) {
  * Render the course management screen.
  */
 export default function CourseMaster() {
+  const currentUser = useMemo(
+    () => JSON.parse(localStorage.getItem("user") || "null"),
+    []
+  );
   const [form, setForm] = useState(initialForm);
   const [errors, setErrors] = useState({});
   const [subjects, setSubjects] = useState([]);
   const [subjectSearchTerm, setSubjectSearchTerm] = useState("");
   const [courses, setCourses] = useState([]);
-  const [searchTerm, setSearchTerm] = useState("");
-  const [selectedSubject, setSelectedSubject] = useState("");
+  const [searchTerm] = useState("");
+  const [selectedSubject] = useState("");
   const [isSaving, setIsSaving] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [isSubjectsLoading, setIsSubjectsLoading] = useState(true);
@@ -172,6 +196,12 @@ export default function CourseMaster() {
  
   const handleSubjectSelectChange = (e) => {
     const { value } = e.target;
+    const selected = subjects.find((subject) => subject._id === value);
+
+    if (!canTeacherManageSubject(currentUser, selected)) {
+      showSubjectAccessError(currentUser, selected, "courses");
+      return;
+    }
  
     setForm((prev) => ({
       ...prev,
@@ -186,9 +216,15 @@ export default function CourseMaster() {
  
   const handleSubmit = async (e) => {
     e.preventDefault();
+    const selected = subjects.find((subject) => subject._id === form.subject);
  
     if (!validateForm()) {
       toast.error("Please fill all required fields");
+      return;
+    }
+
+    if (!canTeacherManageSubject(currentUser, selected)) {
+      showSubjectAccessError(currentUser, selected, "courses");
       return;
     }
  
@@ -281,11 +317,6 @@ export default function CourseMaster() {
       .slice(0, 8);
   }, [editSubjectSearchTerm, editableSubjects]);
  
-  const activeCount = useMemo(
-    () => filteredCourses.filter((course) => course.status === "Active").length,
-    [filteredCourses]
-  );
- 
   const totalPages = Math.max(1, Math.ceil(filteredCourses.length / PAGE_SIZE));
  
   const paginatedCourses = useMemo(() => {
@@ -302,6 +333,11 @@ export default function CourseMaster() {
   }, [totalPages]);
  
   const openEditModal = (course) => {
+    if (!canTeacherManageSubject(currentUser, course?.subject)) {
+      showSubjectAccessError(currentUser, course?.subject, "courses");
+      return;
+    }
+
     setEditForm({
       id: course._id,
       course_name: course.course_name,
@@ -325,6 +361,14 @@ export default function CourseMaster() {
  
   const handleEditChange = (e) => {
     const { name, value } = e.target;
+    const selected = name === "subject"
+      ? subjects.find((subject) => subject._id === value)
+      : null;
+
+    if (name === "subject" && !canTeacherManageSubject(currentUser, selected)) {
+      showSubjectAccessError(currentUser, selected, "courses");
+      return;
+    }
  
     setEditForm((prev) => ({
       ...prev,
@@ -358,9 +402,15 @@ export default function CourseMaster() {
  
   const handleEditSubmit = async (e) => {
     e.preventDefault();
+    const selected = subjects.find((subject) => subject._id === editForm.subject);
  
     if (!validateEditForm()) {
       toast.error("Please complete all required edit fields");
+      return;
+    }
+
+    if (!canTeacherManageSubject(currentUser, selected)) {
+      showSubjectAccessError(currentUser, selected, "courses");
       return;
     }
  
@@ -391,6 +441,12 @@ export default function CourseMaster() {
 
   const handleDeleteCourse = async (course) => {
     if (!course) {
+      return;
+    }
+
+    if (!canTeacherManageSubject(currentUser, course?.subject)) {
+      showSubjectAccessError(currentUser, course?.subject, "courses");
+      setDeleteTarget(null);
       return;
     }
 

@@ -1,6 +1,7 @@
 import Lesson from "../models/Lesson.js";
 import Course from "../models/Course.js";
 import { resequenceDocuments } from "../utils/resequenceDocuments.js";
+import { ensureCanManageSubject } from "../utils/teacherSubjectAccess.js";
 
 /**
  * Build the public lesson identifier from a sequence number.
@@ -30,11 +31,20 @@ export const createLesson = async (req, res) => {
       });
     }
 
-    const existingCourse = await Course.findById(course);
+    const existingCourse = await Course.findById(course).populate(
+      "subject",
+      "subject_name subject_code"
+    );
 
     // Reject lessons that reference a missing course.
     if (!existingCourse) {
       return res.status(404).json({ message: "Selected course not found" });
+    }
+
+    const access = await ensureCanManageSubject(req, existingCourse.subject, "lessons");
+
+    if (!access.allowed) {
+      return res.status(access.status).json({ message: access.message });
     }
 
     const lessons = await resequenceDocuments(Lesson, buildLessonId, "lesson_id");
@@ -152,6 +162,44 @@ export const updateLesson = async (req, res) => {
       });
     }
 
+    const existingLesson = await Lesson.findById(req.params.id).populate({
+      path: "course",
+      select: "subject",
+      populate: {
+        path: "subject",
+        select: "subject_name subject_code",
+      },
+    });
+
+    if (!existingLesson) {
+      return res.status(404).json({ message: "Lesson not found" });
+    }
+
+    const currentAccess = await ensureCanManageSubject(
+      req,
+      existingLesson.course?.subject,
+      "lessons"
+    );
+
+    if (!currentAccess.allowed) {
+      return res.status(currentAccess.status).json({ message: currentAccess.message });
+    }
+
+    const existingCourse = await Course.findById(course).populate(
+      "subject",
+      "subject_name subject_code"
+    );
+
+    if (!existingCourse) {
+      return res.status(404).json({ message: "Selected course not found" });
+    }
+
+    const access = await ensureCanManageSubject(req, existingCourse.subject, "lessons");
+
+    if (!access.allowed) {
+      return res.status(access.status).json({ message: access.message });
+    }
+
     const lesson = await Lesson.findByIdAndUpdate(
       req.params.id,
       {
@@ -203,6 +251,29 @@ export const updateLessonQuestionBank = async (req, res) => {
       return res.status(400).json({ message: "Question bank must be an array" });
     }
 
+    const existingLesson = await Lesson.findById(req.params.id).populate({
+      path: "course",
+      select: "subject",
+      populate: {
+        path: "subject",
+        select: "subject_name subject_code",
+      },
+    });
+
+    if (!existingLesson) {
+      return res.status(404).json({ message: "Lesson not found" });
+    }
+
+    const access = await ensureCanManageSubject(
+      req,
+      existingLesson.course?.subject,
+      "lessons"
+    );
+
+    if (!access.allowed) {
+      return res.status(access.status).json({ message: access.message });
+    }
+
     const lesson = await Lesson.findByIdAndUpdate(
       req.params.id,
       {
@@ -241,11 +312,28 @@ export const updateLessonQuestionBank = async (req, res) => {
 export const deleteLesson = async (req, res) => {
   try {
     const { id } = req.params;
-    const lesson = await Lesson.findById(id);
+    const lesson = await Lesson.findById(id).populate({
+      path: "course",
+      select: "subject",
+      populate: {
+        path: "subject",
+        select: "subject_name subject_code",
+      },
+    });
 
     // Do not continue when the lesson does not exist.
     if (!lesson) {
       return res.status(404).json({ message: "Lesson not found" });
+    }
+
+    const access = await ensureCanManageSubject(
+      req,
+      lesson.course?.subject,
+      "lessons"
+    );
+
+    if (!access.allowed) {
+      return res.status(access.status).json({ message: access.message });
     }
 
     await Lesson.findByIdAndDelete(id);

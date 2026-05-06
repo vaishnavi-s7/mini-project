@@ -4,6 +4,7 @@ import Student from "../models/Student.js";
 import Subject from "../models/Subject.js";
 import Course from "../models/Course.js";
 import Lesson from "../models/Lesson.js";
+import User from "../models/User.js";
 
 const safeUnlink = (filePath) => {
   if (filePath && fs.existsSync(filePath)) {
@@ -25,6 +26,22 @@ const normalizeRow = (row) => {
 
 const requiredHeadersMatch = (receivedHeaders, expectedHeaders) =>
   expectedHeaders.every((header) => receivedHeaders.includes(header));
+
+const normalizeValue = (value) => String(value || "").trim().toLowerCase();
+
+const canTeacherManageSubject = (teacher, subject) => {
+  if (teacher?.role !== "TEACHER") {
+    return true;
+  }
+
+  const assignedSubject = normalizeValue(teacher.subject);
+
+  return (
+    assignedSubject &&
+    (assignedSubject === normalizeValue(subject?.subject_name) ||
+      assignedSubject === normalizeValue(subject?.subject_code))
+  );
+};
 
 export const uploadCSV = async (req, res) => {
   try {
@@ -64,6 +81,22 @@ export const uploadCSV = async (req, res) => {
             safeUnlink(req.file.path);
             return res.status(400).json({
               message: "Invalid CSV type",
+            });
+          }
+
+          const requester = await User.findById(req.user?.id).select("role subject");
+
+          if (!requester || !["HOD", "TEACHER"].includes(requester.role)) {
+            safeUnlink(req.file.path);
+            return res.status(403).json({
+              message: "Only HODs and teachers can upload CSV files",
+            });
+          }
+
+          if (requester.role === "TEACHER" && type === "subject") {
+            safeUnlink(req.file.path);
+            return res.status(403).json({
+              message: "Subject bulk upload is available to HOD only",
             });
           }
 
@@ -228,6 +261,10 @@ export const uploadCSV = async (req, res) => {
                   throw new Error("Invalid subjectCode");
                 }
 
+                if (!canTeacherManageSubject(requester, subject)) {
+                  throw new Error("You have not registered for this subject");
+                }
+
                 await Course.create({
                   course_id: "COURSE" + Date.now() + i,
                   course_name: row.name,
@@ -278,10 +315,14 @@ export const uploadCSV = async (req, res) => {
 
                 const course = await Course.findOne({
                   course_code: courseCode,
-                });
+                }).populate("subject", "subject_name subject_code");
 
                 if (!course) {
                   throw new Error("Invalid courseCode");
+                }
+
+                if (!canTeacherManageSubject(requester, course.subject)) {
+                  throw new Error("You have not registered for this subject");
                 }
 
                 await Lesson.create({
