@@ -7,7 +7,6 @@ import { createTeacher } from "../../services/teacherService";
 const navLinks = [
   { to: "/hod-dashboard", label: "Overview" },
   { to: "/subject-master", label: "Subjects" },
-  { to: "/hod-pending-approvals", label: "Pending Approvals" },
   { to: "/hod-faculty-overview", label: "Faculty Overview" },
   { to: "/hod-announcements", label: "Announcements" },
   { to: "/hod-student-details", label: "Student Details" },

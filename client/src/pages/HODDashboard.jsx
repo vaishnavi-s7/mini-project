@@ -11,12 +11,6 @@ const quickLinks = [
     icon: Users,
   },
   {
-    to: "/hod-pending-approvals",
-    title: "Pending Approvals",
-    description: "Review course and lesson items waiting for HOD approval.",
-    icon: ClipboardCheck,
-  },
-  {
     to: "/hod-faculty-overview",
     title: "Faculty Overview",
     description: "See teachers, subjects, and lesson workload at a glance.",

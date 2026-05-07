@@ -86,20 +86,6 @@ export function useHodDashboardData() {
     loadHodData();
   }, [refreshKey]);
 
-  const lessonsWithPreparedContent = lessons.filter((lesson) => {
-    const hasDescription = normalizeText(lesson?.description).length > 0;
-    const hasQuestionBank = Array.isArray(lesson?.question_bank)
-      && lesson.question_bank.some(
-        (item) => normalizeText(item?.title) || normalizeText(item?.content)
-      );
-
-    return hasDescription || hasQuestionBank;
-  }).length;
-
-  const courseCompletionRate = lessons.length
-    ? Math.round((lessonsWithPreparedContent / lessons.length) * 100)
-    : 0;
-
   const teacherSubjectMap = teachers.reduce((map, teacher) => {
     const subjectKey = normalizeText(teacher?.subject);
 
@@ -173,20 +159,6 @@ export function useHodDashboardData() {
       value: String(students.length),
       detail: "Current enrollments across all years",
       accent: "from-blue-700 to-indigo-700",
-    },
-    {
-      id: "approvals",
-      label: "Pending Approvals",
-      value: String(pendingApprovals.length),
-      detail: "Inactive courses and lessons awaiting review",
-      accent: "from-blue-800 to-slate-900",
-    },
-    {
-      id: "completion",
-      label: "Course Completion Rate",
-      value: `${courseCompletionRate}%`,
-      detail: "Lessons with content or question bank prepared",
-      accent: "from-blue-600 to-indigo-700",
     },
   ];
 
