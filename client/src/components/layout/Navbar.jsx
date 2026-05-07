@@ -34,6 +34,8 @@ export default function Navbar() {
     { to: "/master-dashboard", label: "Dashboard" },
   ];
 
+  const isAuthenticated = Boolean(user);
+
   const linkStyle = (path) =>
     `inline-flex items-center justify-center whitespace-nowrap rounded-full px-4 py-2 text-sm font-medium transition ${
       location.pathname === path
@@ -98,13 +100,15 @@ export default function Navbar() {
     <nav className="relative z-20 border-b border-slate-200 bg-white/95 backdrop-blur">
       <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-3 sm:px-6">
         <div className="hidden flex-1 justify-center md:flex">
-          <div className="flex flex-wrap justify-center gap-2">
-            {navLinks.map((link) => (
-              <Link key={link.to} to={link.to} className={linkStyle(link.to)}>
-                {link.label}
-              </Link>
-            ))}
-          </div>
+          {isAuthenticated && (
+            <div className="flex flex-wrap justify-center gap-2">
+              {navLinks.map((link) => (
+                <Link key={link.to} to={link.to} className={linkStyle(link.to)}>
+                  {link.label}
+                </Link>
+              ))}
+            </div>
+          )}
         </div>
 
         <div className="hidden items-center gap-4 md:flex">
@@ -162,18 +166,20 @@ export default function Navbar() {
 
       {mobileMenu && (
         <div className="space-y-3 px-4 pb-4 pt-2 md:hidden">
-          <div className="flex flex-col gap-2">
-            {navLinks.map((link) => (
-              <Link
-                key={link.to}
-                to={link.to}
-                className={linkStyle(link.to)}
-                onClick={() => setMobileMenu(false)}
-              >
-                {link.label}
-              </Link>
-            ))}
-          </div>
+          {isAuthenticated && (
+            <div className="flex flex-col gap-2">
+              {navLinks.map((link) => (
+                <Link
+                  key={link.to}
+                  to={link.to}
+                  className={linkStyle(link.to)}
+                  onClick={() => setMobileMenu(false)}
+                >
+                  {link.label}
+                </Link>
+              ))}
+            </div>
+          )}
 
           <div className="border-t pt-2">
             {!user && (

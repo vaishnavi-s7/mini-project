@@ -36,7 +36,7 @@ function App() {
       {/* Header */}
       <Header />
       <Toaster position="top-right" />
-      {user && (isHod ? <HODNavbar /> : <Navbar />)}
+      {isHod ? <HODNavbar /> : <Navbar />}
 
       {/* Main Content */}
       <main className="mx-auto w-full max-w-7xl flex-grow px-4 py-8">
